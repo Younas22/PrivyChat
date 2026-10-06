@@ -238,7 +238,7 @@ function MessageBubbleImpl({
         >
           {/* Reactions as a corner badge: top-right on their messages, top-left on mine. */}
           {hasReactions && (
-            <div className={`absolute -top-4 z-10 flex gap-1 ${isMine ? "-left-2" : "-right-2"}`}>
+            <div className={`absolute -top-3 z-10 flex gap-1 ${isMine ? "-left-2" : "-right-2"}`}>
               {message.reactions.map((r) => {
                 const mine = r.userIds.includes(viewerId);
                 return (
@@ -250,12 +250,11 @@ function MessageBubbleImpl({
                     aria-pressed={mine}
                     aria-label={`${r.emoji} ${r.userIds.length}${mine ? ", including you. Tap to remove" : ""}`}
                     title={mine ? "Tap to remove your reaction" : "Tap to react with this too"}
-                    className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-sm shadow-sm ring-1 transition enabled:hover:scale-105 ${
-                      mine ? "bg-indigo-50 ring-indigo-300" : "bg-white ring-neutral-200"
-                    }`}
+                    // Just the emoji (and a count): no background, border or shadow behind it.
+                    className="inline-flex items-center gap-0.5 text-lg leading-none transition enabled:hover:scale-110"
                   >
                     <span>{r.emoji}</span>
-                    {r.userIds.length > 1 && <span className="text-xs font-medium text-neutral-600">{r.userIds.length}</span>}
+                    {r.userIds.length > 1 && <span className="text-xs font-semibold text-neutral-500">{r.userIds.length}</span>}
                   </button>
                 );
               })}

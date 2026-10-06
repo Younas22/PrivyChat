@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore, type ReactNode } from "react";
-import { listTimeZones, zoneOffset } from "@/lib/client/time";
+import type { ReactNode } from "react";
 import { BUBBLE_COLORS, type BubbleColorId } from "@/lib/client/bubbleColors";
 import type { RoomInfo, RoomMemberInfo, Viewer } from "@/lib/types";
 import { Avatar } from "@/components/ui/Avatar";
+import { TimeZonePicker } from "./TimeZonePicker";
 import {
   ArchiveIcon,
   CheckIcon,
@@ -37,61 +37,6 @@ interface RoomPanelProps {
   onCloseRoom: () => void;
   onDeleteRoom: () => void;
   onRemoveMember: (member: RoomMemberInfo) => void;
-}
-
-const noopSubscribe = () => () => {};
-
-// Building ~400 labels with offsets is cheap but not free: do it once per page.
-let zoneOptionsCache: { value: string; label: string }[] | null = null;
-function zoneOptions() {
-  return (zoneOptionsCache ??= listTimeZones().map((z) => {
-    const offset = zoneOffset(z);
-    return { value: z, label: `${z.replace(/_/g, " ")}${offset ? ` (${offset})` : ""}` };
-  }));
-}
-
-function TimeZonePicker({
-  preference,
-  detected,
-  onChange,
-}: {
-  preference: string;
-  detected: string;
-  onChange: (zone: string) => void;
-}) {
-  // The zone list differs between server and browser, so build it only after hydration.
-  const hydrated = useSyncExternalStore(
-    noopSubscribe,
-    () => true,
-    () => false,
-  );
-  const options = hydrated ? zoneOptions() : [];
-  return (
-    <div>
-      <label
-        htmlFor="tz-select"
-        className="mb-2 block text-xs font-semibold tracking-wider text-neutral-500 uppercase"
-      >
-        Time zone
-      </label>
-      <select
-        id="tz-select"
-        value={preference}
-        onChange={(e) => onChange(e.target.value)}
-        className="block min-h-11 w-full rounded-xl border-0 bg-white/10 px-3 text-sm text-white ring-1 ring-white/10 ring-inset focus:ring-2 focus:ring-indigo-400 focus:outline-none"
-      >
-        <option value="auto" className="text-neutral-900">
-          Automatic ({detected.replace(/_/g, " ")})
-        </option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value} className="text-neutral-900">
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <p className="mt-2 text-xs text-neutral-500">Message times are shown in this zone, in AM/PM.</p>
-    </div>
-  );
 }
 
 function PanelButton({

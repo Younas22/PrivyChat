@@ -204,3 +204,20 @@ export const PanelLeftOpenIcon = (p: IconProps) => (
     <path d="m14 9 3 3-3 3" />
   </Icon>
 );
+export const ClockIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </Icon>
+);
+export const SearchIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </Icon>
+);
+export const ChevronDownIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+);
