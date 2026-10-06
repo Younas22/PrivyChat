@@ -85,6 +85,9 @@ function ChatRoomInner({
   const [busy, setBusy] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; name: string } | null>(null);
+  // The other member's "typing…" hint; expires on its own if the "stopped" signal is lost.
+  const [typingUser, setTypingUser] = useState<{ userId: string; displayName: string } | null>(null);
+  const typingExpiry = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [canShare, setCanShare] = useState(false);
   const listRef = useRef<MessageListHandle>(null);
@@ -141,6 +144,7 @@ function ChatRoomInner({
       switch (event.type) {
         case "message:new":
           setMessages((list) => upsert(list, [event.message]));
+          setTypingUser((t) => (t?.userId === event.message.senderId ? null : t));
           break;
         case "message:deleted":
           setMessages((list) =>
@@ -172,6 +176,16 @@ function ChatRoomInner({
           break;
         case "room:deleted":
           setStatus("deleted");
+          break;
+        case "typing":
+          if (event.userId === viewer.userId) break;
+          if (typingExpiry.current) clearTimeout(typingExpiry.current);
+          if (event.typing) {
+            setTypingUser({ userId: event.userId, displayName: event.displayName });
+            typingExpiry.current = setTimeout(() => setTypingUser(null), 6000);
+          } else {
+            setTypingUser(null);
+          }
           break;
       }
     },
@@ -249,7 +263,50 @@ function ChatRoomInner({
     [base, handleFatal, toast],
   );
 
+  // ---------- typing hint (sender side) ----------
+
+  const typingState = useRef({ active: false, lastSent: 0, stopTimer: null as ReturnType<typeof setTimeout> | null });
+
+  const sendTyping = useCallback(
+    (typing: boolean) => {
+      void fetch(`${base}/typing`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ typing }),
+        keepalive: true,
+      }).catch(() => {});
+    },
+    [base],
+  );
+
+  const stopTyping = useCallback(() => {
+    const t = typingState.current;
+    if (t.stopTimer) clearTimeout(t.stopTimer);
+    t.stopTimer = null;
+    if (t.active) {
+      t.active = false;
+      sendTyping(false);
+    }
+  }, [sendTyping]);
+
+  /** Called on each keystroke: tells the other side at most every 2.5 s, stops after 4 s idle. */
+  const onUserTyping = useCallback(() => {
+    if (roomRef.current.members.length < 2 || roomRef.current.status !== "open") return;
+    const t = typingState.current;
+    const now = Date.now();
+    if (!t.active || now - t.lastSent > 2500) {
+      t.active = true;
+      t.lastSent = now;
+      sendTyping(true);
+    }
+    if (t.stopTimer) clearTimeout(t.stopTimer);
+    t.stopTimer = setTimeout(stopTyping, 4000);
+  }, [sendTyping, stopTyping]);
+
+  useEffect(() => stopTyping, [stopTyping]);
+
   const onSendText = (content: string) => {
+    stopTyping();
     const item: PendingText = { tempId: tempId(), content, replyTo, status: "sending" };
     setPending((p) => [...p, item]);
     setReplyTo(null);
@@ -292,6 +349,7 @@ function ChatRoomInner({
   );
 
   const onSendFile = (file: File, caption: string) => {
+    stopTyping();
     const item: PendingUpload = { tempId: tempId(), file, caption, replyTo, progress: 0, status: "uploading" };
     setUploads((u) => [...u, item]);
     setReplyTo(null);
@@ -461,11 +519,23 @@ function ChatRoomInner({
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold text-neutral-950">{room.name}</h1>
             <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-neutral-500">
-              <span className="text-xs">
-                {room.members.length} {room.members.length === 1 ? "Member" : "Members"}
-              </span>
-              <span className="text-neutral-300">·</span>
-              {isSaved ? <span className="text-xs font-medium text-neutral-700">Saved<span className="hidden sm:inline"> · read-only</span></span> : <ConnectionBadge connection={connection} />}
+              {typingUser && !isSaved ? (
+                <span className="truncate text-xs font-medium text-indigo-600">{typingUser.displayName} is typing…</span>
+              ) : (
+                <>
+                  <span className="text-xs">
+                    {room.members.length} {room.members.length === 1 ? "Member" : "Members"}
+                  </span>
+                  <span className="text-neutral-300">·</span>
+                  {isSaved ? (
+                    <span className="text-xs font-medium text-neutral-700">
+                      Saved<span className="hidden sm:inline"> · read-only</span>
+                    </span>
+                  ) : (
+                    <ConnectionBadge connection={connection} />
+                  )}
+                </>
+              )}
             </div>
           </div>
           {isSaved ? (
@@ -506,6 +576,7 @@ function ChatRoomInner({
           highlightedId={highlightedId}
           canAct={!isSaved}
           isAlone={isAlone && !isSaved}
+          typingUser={isSaved ? null : typingUser}
           onLoadOlder={loadOlder}
           onReply={onReply}
           onDelete={onDelete}
@@ -539,6 +610,7 @@ function ChatRoomInner({
           limits={limits}
           onCancelReply={() => setReplyTo(null)}
           onSendText={onSendText}
+          onTyping={onUserTyping}
           onSendFile={onSendFile}
           onError={(m) => toast(m, "error")}
         />

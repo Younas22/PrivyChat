@@ -68,6 +68,8 @@ async function triggerPusher(channel: string, name: string, data: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body,
+    // Never let a slow Pusher response hold a request (or a serverless function) open.
+    signal: AbortSignal.timeout(5000),
   });
   if (!res.ok) console.error("Pusher trigger failed", res.status, await res.text().catch(() => ""));
 }

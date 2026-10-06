@@ -24,6 +24,8 @@ interface ComposerProps {
   limits: UploadLimits;
   onCancelReply: () => void;
   onSendText: (content: string) => void;
+  /** Called on every keystroke in the message box (drives the "typing…" hint). */
+  onTyping?: () => void;
   onSendFile: (file: File, caption: string) => void;
   onError: (message: string) => void;
 }
@@ -34,7 +36,16 @@ function replyLabel(m: ChatMessage) {
   return "Message";
 }
 
-export function Composer({ disabled, replyTo, limits, onCancelReply, onSendText, onSendFile, onError }: ComposerProps) {
+export function Composer({
+  disabled,
+  replyTo,
+  limits,
+  onCancelReply,
+  onSendText,
+  onTyping,
+  onSendFile,
+  onError,
+}: ComposerProps) {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -222,7 +233,10 @@ export function Composer({ disabled, replyTo, limits, onCancelReply, onSendText,
         <textarea
           ref={textareaRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            if (e.target.value.trim()) onTyping?.();
+          }}
           onKeyDown={onKeyDown}
           onPaste={(e) => {
             const pasted = e.clipboardData.files?.[0];

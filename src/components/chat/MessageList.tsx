@@ -4,6 +4,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffec
 import type { ChatMessage } from "@/lib/types";
 import { formatBytes, formatDay } from "@/lib/client/format";
 import { AlertIcon, ArrowDownIcon, CopyIcon, FileIcon, MessageIcon, RefreshIcon, XIcon } from "@/components/ui/icons";
+import { Avatar } from "@/components/ui/Avatar";
 import { Spinner } from "@/components/ui/Spinner";
 import { MessageBubble, QuoteBlock } from "./MessageBubble";
 import { LinkifiedText } from "./LinkifiedText";
@@ -41,6 +42,8 @@ interface MessageListProps {
   highlightedId: string | null;
   canAct: boolean;
   isAlone: boolean;
+  /** The other member while they are typing, or null. */
+  typingUser: { userId: string; displayName: string } | null;
   onLoadOlder: () => void;
   onReply: (m: ChatMessage) => void;
   onDelete: (m: ChatMessage) => void;
@@ -139,7 +142,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
 
   const toggleActive = useCallback((id: string) => setActiveId((cur) => (cur === id ? null : id)), []);
 
-  const isEmpty = messages.length === 0 && pending.length === 0 && uploads.length === 0;
+  const isEmpty = messages.length === 0 && pending.length === 0 && uploads.length === 0 && !props.typingUser;
 
   return (
     <div className="relative min-h-0 flex-1">
@@ -216,6 +219,25 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                   </div>
                 );
               })}
+
+              {props.typingUser && (
+                <div className="mt-3 flex items-end gap-2" aria-live="polite">
+                  <Avatar name={props.typingUser.displayName} id={props.typingUser.userId} />
+                  <div
+                    className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-neutral-100 px-4 py-3 shadow-sm"
+                    title={`${props.typingUser.displayName} is typing…`}
+                  >
+                    <span className="sr-only">{props.typingUser.displayName} is typing…</span>
+                    {[0, 150, 300].map((delay) => (
+                      <span
+                        key={delay}
+                        className="size-2 animate-bounce rounded-full bg-neutral-400"
+                        style={{ animationDelay: `${delay}ms` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {pending.map((p) => (
                 <div key={p.tempId} className="mt-1 flex flex-col items-end pr-10">

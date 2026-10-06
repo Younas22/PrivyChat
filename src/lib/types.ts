@@ -66,7 +66,8 @@ export type RoomEvent =
   | { type: "member:joined"; room: RoomInfo; member: RoomMemberInfo }
   | { type: "member:removed"; room: RoomInfo; userId: string }
   | { type: "room:closed" }
-  | { type: "room:deleted" };
+  | { type: "room:deleted" }
+  | { type: "typing"; userId: string; displayName: string; typing: boolean };
 
 export interface MessagesPage {
   messages: ChatMessage[];
