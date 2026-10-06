@@ -4,6 +4,20 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 
 const MAX_SECONDS = 300; // 5 minutes
 const MIN_MS = 700; // shorter taps are discarded
+const BITRATE = 128_000; // clear speech (WhatsApp voice notes use far less); ~1 MB per minute
+
+/**
+ * Mic settings for voice notes. Echo cancellation is for calls (nothing plays while you record)
+ * and makes voices sound muffled, so it's off; noise suppression and automatic gain stay on to
+ * keep background noise down and quiet voices audible.
+ */
+const MIC_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: true,
+  autoGainControl: true,
+  channelCount: { ideal: 1 },
+  sampleRate: { ideal: 48_000 },
+};
 
 // Formats in order of preference; Safari records audio/mp4, Firefox audio/ogg.
 const MIME_CANDIDATES = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
@@ -68,9 +82,7 @@ export function useVoiceRecorder({
     setState("starting");
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: MIC_CONSTRAINTS });
     } catch (err) {
       setState("idle");
       const name = (err as DOMException)?.name;
@@ -85,7 +97,7 @@ export function useVoiceRecorder({
     }
 
     const mimeType = MIME_CANDIDATES.find((t) => MediaRecorder.isTypeSupported?.(t));
-    const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    const rec = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: BITRATE });
     chunksRef.current = [];
     discardRef.current = false;
     rec.ondataavailable = (e) => {
