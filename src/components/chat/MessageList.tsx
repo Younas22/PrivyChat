@@ -270,21 +270,24 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
 
               {uploads.map((u) => (
                 <div key={u.tempId} className="mt-1 flex flex-col items-end pr-10">
-                  <div className="w-64 max-w-[calc(100vw-7.5rem)] rounded-2xl rounded-br-md bg-indigo-600 p-3 text-white shadow-sm sm:w-72">
+                  {/* Same plain look as a sent document: no background behind the file. */}
+                  <div className="w-64 max-w-[calc(100vw-7.5rem)] py-1 sm:w-72">
                     <div className="flex items-center gap-3">
-                      <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white/15">
-                        {u.status === "failed" ? <AlertIcon className="size-5" /> : <FileIcon className="size-5" />}
-                      </span>
+                      {u.status === "failed" ? (
+                        <AlertIcon className="size-9 shrink-0 text-red-500" />
+                      ) : (
+                        <FileIcon className="size-9 shrink-0 text-indigo-600" />
+                      )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{u.file.name}</p>
-                        <p className="text-xs text-indigo-100">
-                          {u.status === "failed" ? u.error : `${Math.round(u.progress * 100)}% of ${formatBytes(u.file.size)}`}
+                        <p className="truncate text-sm font-medium text-neutral-900">{u.file.name}</p>
+                        <p className={`text-xs ${u.status === "failed" ? "text-red-600" : "text-neutral-500"}`}>
+                          {u.status === "failed" ? u.error : `Uploading… ${Math.round(u.progress * 100)}% of ${formatBytes(u.file.size)}`}
                         </p>
                       </div>
                     </div>
                     {u.status === "uploading" && (
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/20">
-                        <div className="h-full rounded-full bg-white transition-[width]" style={{ width: `${u.progress * 100}%` }} />
+                      <div className="mt-2 h-1 overflow-hidden rounded-full bg-neutral-200">
+                        <div className="h-full rounded-full bg-indigo-600 transition-[width]" style={{ width: `${u.progress * 100}%` }} />
                       </div>
                     )}
                   </div>
