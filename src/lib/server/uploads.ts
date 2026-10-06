@@ -106,15 +106,17 @@ export function sanitizeFileName(name: string) {
   return (cleaned || "file").slice(-200);
 }
 
-export interface ValidatedUpload {
+export interface UploadPlan {
   category: UploadCategory;
-  mimeType: string;
+  ext: string;
   safeName: string;
-  storedName: string;
 }
 
-/** Validates extension, real content (magic bytes) and size. Throws a friendly AppError on failure. */
-export async function validateUpload(originalName: string, data: Buffer): Promise<ValidatedUpload> {
+/** Bytes needed from the start of a file to verify its type (plain-text files are checked further). */
+export const SNIFF_BYTES = 64 * 1024;
+
+/** Checks name, extension and size before any bytes are stored. Throws a friendly AppError on failure. */
+export function planUpload(originalName: string, size: number): UploadPlan {
   const safeName = sanitizeFileName(originalName);
   const ext = extensionOf(safeName);
   const category = categoryForExtension(ext);
@@ -123,28 +125,46 @@ export async function validateUpload(originalName: string, data: Buffer): Promis
       "This file type isn't supported. Send images, videos, or common documents (PDF, Office, text).",
     );
   }
-  if (data.length === 0) throw Errors.badRequest("This file is empty.");
-
+  if (size <= 0) throw Errors.badRequest("This file is empty.");
   const max = maxSizeFor(category);
-  if (data.length > max) {
+  if (size > max) {
     throw Errors.badRequest(`This file is too large. The maximum ${category} size is ${Math.round(max / MB)} MB.`);
   }
+  return { category, ext, safeName };
+}
 
-  const detected = await fileTypeFromBuffer(data);
-  let mimeType: string;
+/** Allowed browser Content-Types for a planned upload (used to restrict direct-to-storage uploads). */
+export function allowedContentTypes(plan: UploadPlan) {
+  return [...new Set([...(RULES[plan.category][plan.ext] ?? []), TEXT_DOCUMENTS[plan.ext], SERVE_MIME[plan.ext]])].filter(
+    (t): t is string => Boolean(t),
+  );
+}
 
+/**
+ * Verifies the real content (magic bytes) of a file and returns the MIME type to serve it with.
+ * `head` is the start of the file; `complete` says whether it is the whole file.
+ */
+export async function verifyContent(plan: UploadPlan, head: Buffer, complete: boolean): Promise<string> {
+  const detected = await fileTypeFromBuffer(head);
   if (detected) {
-    const allowed = RULES[category][ext] ?? [];
+    const allowed = RULES[plan.category][plan.ext] ?? [];
     if (!allowed.includes(detected.mime)) {
       throw Errors.badRequest("The file's contents don't match its extension, so it was rejected.");
     }
-    mimeType = SERVE_MIME[ext] ?? detected.mime;
-  } else if (ext in TEXT_DOCUMENTS && looksLikeText(data)) {
-    mimeType = TEXT_DOCUMENTS[ext];
-  } else {
-    throw Errors.badRequest("We couldn't verify this file's type, so it was rejected.");
+    return SERVE_MIME[plan.ext] ?? detected.mime;
   }
-
-  const storedName = `${randomBytes(16).toString("hex")}.${ext}`;
-  return { category, mimeType, safeName, storedName };
+  if (plan.ext in TEXT_DOCUMENTS) {
+    // Don't judge a multi-byte character cut off at the end of a partial read.
+    let end = head.length;
+    if (!complete) while (end > 0 && head[end - 1] >= 0x80) end--;
+    const sample = head.subarray(0, end);
+    if (looksLikeText(sample)) return TEXT_DOCUMENTS[plan.ext];
+  }
+  throw Errors.badRequest("We couldn't verify this file's type, so it was rejected.");
 }
+
+export function randomStoredName(ext: string) {
+  return `${randomBytes(16).toString("hex")}.${ext}`;
+}
+
+export const STORED_NAME_PATTERN = /^[a-f0-9]{32}\.([a-z0-9]{1,8})$/;

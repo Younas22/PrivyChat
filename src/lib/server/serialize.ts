@@ -72,11 +72,13 @@ export function toMemberInfo(member: RoomWithMembers["members"][number], ownerId
 
 export function toRoomInfo(room: RoomWithMembers): RoomInfo {
   return {
+    id: room.id,
     roomCode: room.roomCode,
     name: room.name,
     status: room.status,
     ownerId: room.ownerId,
     members: room.members.map((m) => toMemberInfo(m, room.ownerId)),
     createdAt: room.createdAt.toISOString(),
+    closedAt: room.closedAt?.toISOString() ?? null,
   };
 }

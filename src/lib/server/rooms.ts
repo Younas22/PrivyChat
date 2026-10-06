@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
-import type { ChatMessage, MessagesPage } from "@/lib/types";
+import type { ChatMessage, MessagesPage, OwnedRoomSummary } from "@/lib/types";
 import { getStorage } from "@/lib/storage";
 import { Errors } from "./errors";
 import { getCurrentUser, upsertCurrentUser } from "./identity";
@@ -26,9 +26,13 @@ export type RoomAccess = Awaited<ReturnType<typeof resolveRoomAccess>>;
 export async function resolveRoomAccess(roomCode: string) {
   const room = await findRoom(roomCode);
   if (!room) return { state: "not_found" as const };
-  if (room.status === "closed") return { state: "closed" as const };
 
   const user = await getCurrentUser();
+  if (room.status === "closed") {
+    // A saved room stays readable for its owner only.
+    if (user && room.ownerId === user.id) return { state: "saved" as const, room, user };
+    return { state: "closed" as const };
+  }
   if (user) {
     const membership = await prisma.roomMember.findUnique({
       where: { roomId_userId: { roomId: room.id, userId: user.id } },
@@ -43,12 +47,18 @@ export async function resolveRoomAccess(roomCode: string) {
 /**
  * Server-side guard for every chat operation: the caller must be an active member
  * of an open room (and optionally its owner). IDs from the client are never trusted.
+ * `ownerCanReadSaved` lets the owner read (never write) a saved/closed room.
  */
-export async function requireMember(roomCode: string, opts: { ownerOnly?: boolean } = {}) {
+export async function requireMember(
+  roomCode: string,
+  opts: { ownerOnly?: boolean; ownerCanReadSaved?: boolean } = {},
+) {
   const user = await getCurrentUser();
   const room = await findRoom(roomCode);
   if (!room) throw Errors.notFound();
-  if (room.status === "closed") throw Errors.closed();
+  if (room.status === "closed" && !(opts.ownerCanReadSaved && user && room.ownerId === user.id)) {
+    throw Errors.closed();
+  }
   if (!user) throw Errors.noIdentity();
 
   const membership = await prisma.roomMember.findUnique({
@@ -89,31 +99,34 @@ export async function joinRoom(roomCode: string, displayName: string) {
   if (!ROOM_CODE_PATTERN.test(roomCode)) throw Errors.notFound();
   const user = await upsertCurrentUser(displayName);
 
-  const result = await prisma.$transaction(async (tx) => {
-    const room = await tx.chatRoom.findUnique({ where: { roomCode } });
-    if (!room) throw Errors.notFound();
-    // Lock the room row so two people can't grab the last slot simultaneously.
-    await tx.$queryRaw`SELECT id FROM ChatRoom WHERE id = ${room.id} FOR UPDATE`;
-    const locked = await tx.chatRoom.findUniqueOrThrow({ where: { id: room.id } });
-    if (locked.status === "closed") throw Errors.closed();
+  const result = await prisma.$transaction(
+    async (tx) => {
+      // Lock the room row FIRST so concurrent joins queue up here. With READ COMMITTED,
+      // the member count below then sees rows committed by whoever held the lock before us.
+      const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM ChatRoom WHERE roomCode = ${roomCode} FOR UPDATE`;
+      if (locked.length === 0) throw Errors.notFound();
+      const room = await tx.chatRoom.findUniqueOrThrow({ where: { id: locked[0].id } });
+      if (room.status === "closed") throw Errors.closed();
 
-    const existing = await tx.roomMember.findUnique({
-      where: { roomId_userId: { roomId: room.id, userId: user.id } },
-    });
-    if (existing?.removedAt) throw Errors.removed();
-    if (existing) return { room, joined: false };
+      const existing = await tx.roomMember.findUnique({
+        where: { roomId_userId: { roomId: room.id, userId: user.id } },
+      });
+      if (existing?.removedAt) throw Errors.removed();
+      if (existing) return { room, joined: false };
 
-    const activeCount = await tx.roomMember.count({ where: { roomId: room.id, removedAt: null } });
-    if (activeCount >= MAX_MEMBERS) throw Errors.full();
+      const activeCount = await tx.roomMember.count({ where: { roomId: room.id, removedAt: null } });
+      if (activeCount >= MAX_MEMBERS) throw Errors.full();
 
-    await tx.roomMember.create({ data: { roomId: room.id, userId: user.id } });
-    return { room, joined: true };
-  });
+      await tx.roomMember.create({ data: { roomId: room.id, userId: user.id } });
+      return { room, joined: true };
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+  );
 
   if (result.joined) {
     const fresh = await prisma.chatRoom.findUniqueOrThrow({ where: { id: result.room.id }, include: roomInclude });
     const member = fresh.members.find((m) => m.userId === user.id)!;
-    publish(fresh.id, { type: "member:joined", room: toRoomInfo(fresh), member: toMemberInfo(member, fresh.ownerId) });
+    await publish(fresh, { type: "member:joined", room: toRoomInfo(fresh), member: toMemberInfo(member, fresh.ownerId) });
   }
   return result.room;
 }
@@ -122,7 +135,7 @@ export async function renameRoom(roomCode: string, name: string) {
   const { room } = await requireMember(roomCode, { ownerOnly: true });
   const updated = await prisma.chatRoom.update({ where: { id: room.id }, data: { name }, include: roomInclude });
   const info = toRoomInfo(updated);
-  publish(room.id, { type: "room:updated", room: info });
+  await publish(room, { type: "room:updated", room: info });
   return info;
 }
 
@@ -134,11 +147,11 @@ export async function closeRoom(roomCode: string) {
     data: { status: "closed", closedAt: new Date() },
   });
   if (count === 0) throw Errors.closed();
-  publish(room.id, { type: "room:closed" });
+  await publish(room, { type: "room:closed" });
 }
 
 export async function deleteRoom(roomCode: string) {
-  const { room } = await requireMember(roomCode, { ownerOnly: true });
+  const { room } = await requireMember(roomCode, { ownerOnly: true, ownerCanReadSaved: true });
   // Members and messages are removed by ON DELETE CASCADE.
   await prisma.chatRoom.delete({ where: { id: room.id } });
   try {
@@ -146,7 +159,7 @@ export async function deleteRoom(roomCode: string) {
   } catch (err) {
     console.error("Failed to delete room files", err);
   }
-  publish(room.id, { type: "room:deleted" });
+  await publish(room, { type: "room:deleted" });
 }
 
 export async function removeMember(roomCode: string, memberId: string) {
@@ -157,13 +170,13 @@ export async function removeMember(roomCode: string, memberId: string) {
 
   await prisma.roomMember.update({ where: { id: target.id }, data: { removedAt: new Date() } });
   const fresh = await prisma.chatRoom.findUniqueOrThrow({ where: { id: room.id }, include: roomInclude });
-  publish(room.id, { type: "member:removed", room: toRoomInfo(fresh), userId: target.userId });
+  await publish(room, { type: "member:removed", room: toRoomInfo(fresh), userId: target.userId });
 }
 
 // ---------- Messages ----------
 
 export async function listMessages(roomCode: string, before?: string | null): Promise<MessagesPage> {
-  const { room } = await requireMember(roomCode);
+  const { room } = await requireMember(roomCode, { ownerCanReadSaved: true });
   let cursorDate: Date | undefined;
   if (before) {
     const cursor = await prisma.message.findFirst({ where: { id: before, roomId: room.id }, select: { createdAt: true } });
@@ -188,17 +201,17 @@ async function validateReplyTarget(roomId: string, replyToMessageId?: string | n
 
 interface NewMessageInput {
   user: User;
-  roomId: string;
+  room: { id: string; roomCode: string };
   content: string | null;
   replyToMessageId?: string | null;
   file?: { type: "image" | "video" | "document"; name: string; url: string; mimeType: string; size: number };
 }
 
 export async function createMessage(input: NewMessageInput): Promise<ChatMessage> {
-  const replyTo = await validateReplyTarget(input.roomId, input.replyToMessageId);
+  const replyTo = await validateReplyTarget(input.room.id, input.replyToMessageId);
   const message = await prisma.message.create({
     data: {
-      roomId: input.roomId,
+      roomId: input.room.id,
       senderId: input.user.id,
       content: input.content,
       type: input.file?.type ?? "text",
@@ -211,13 +224,13 @@ export async function createMessage(input: NewMessageInput): Promise<ChatMessage
     include: messageInclude,
   });
   const dto = toChatMessage(message);
-  publish(input.roomId, { type: "message:new", message: dto });
+  await publish(input.room, { type: "message:new", message: dto });
   return dto;
 }
 
 export async function sendTextMessage(roomCode: string, content: string, replyToMessageId?: string | null) {
   const { user, room } = await requireMember(roomCode);
-  return createMessage({ user, roomId: room.id, content, replyToMessageId });
+  return createMessage({ user, room, content, replyToMessageId });
 }
 
 export async function deleteMessage(roomCode: string, messageId: string) {
@@ -234,7 +247,7 @@ export async function deleteMessage(roomCode: string, messageId: string) {
     const key = fileKeyFromUrl(message.fileUrl);
     if (key) await getStorage().delete(key).catch((err) => console.error("Failed to delete file", err));
   }
-  publish(room.id, { type: "message:deleted", messageId: message.id });
+  await publish(room, { type: "message:deleted", messageId: message.id });
 }
 
 // ---------- Files ----------
@@ -255,9 +268,48 @@ export async function authorizeFileAccess(roomId: string) {
   if (!user) throw Errors.noIdentity();
   const membership = await prisma.roomMember.findUnique({
     where: { roomId_userId: { roomId, userId: user.id } },
-    include: { room: { select: { status: true } } },
+    include: { room: { select: { status: true, ownerId: true } } },
   });
   if (!membership) throw Errors.notMember();
   if (membership.removedAt) throw Errors.removed();
-  if (membership.room.status === "closed") throw Errors.closed();
+  if (membership.room.status === "closed" && membership.room.ownerId !== user.id) throw Errors.closed();
+}
+
+// ---------- My Rooms ----------
+
+const TYPE_PREVIEW = { image: "📷 Photo", video: "🎬 Video", document: "📄 Document", text: "" } as const;
+
+/** Rooms created by the current browser's user, newest activity first. */
+export async function listOwnedRooms(): Promise<OwnedRoomSummary[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const rooms = await prisma.chatRoom.findMany({
+    where: { ownerId: user.id },
+    include: {
+      members: { where: { removedAt: null }, include: { user: { select: { displayName: true } } } },
+      messages: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { content: true, type: true, createdAt: true },
+      },
+      _count: { select: { messages: { where: { deletedAt: null } } } },
+    },
+  });
+  return rooms
+    .map((r) => {
+      const last = r.messages[0];
+      return {
+        roomCode: r.roomCode,
+        name: r.name,
+        status: r.status,
+        createdAt: r.createdAt.toISOString(),
+        closedAt: r.closedAt?.toISOString() ?? null,
+        lastActivityAt: (r.closedAt ?? last?.createdAt ?? r.createdAt).toISOString(),
+        memberNames: r.members.filter((m) => m.userId !== user.id).map((m) => m.user.displayName),
+        messageCount: r._count.messages,
+        lastMessage: last ? (last.content?.slice(0, 120) || TYPE_PREVIEW[last.type]) : null,
+      };
+    })
+    .sort((a, b) => (a.lastActivityAt < b.lastActivityAt ? 1 : -1));
 }

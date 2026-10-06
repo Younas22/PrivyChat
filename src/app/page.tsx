@@ -1,12 +1,14 @@
+import Link from "next/link";
 import { CreateRoomForm } from "@/components/landing/CreateRoomForm";
 import { Logo } from "@/components/ui/Logo";
-import { ArchiveIcon, LinkIcon, LockIcon, UsersIcon } from "@/components/ui/icons";
+import { ArchiveIcon, LinkIcon, MessageIcon, UsersIcon } from "@/components/ui/icons";
+import { APP_NAME } from "@/lib/brand";
 
 const STEPS = [
-  { icon: LockIcon, title: "Create a room", text: "Enter your name and get a private room in one click." },
-  { icon: LinkIcon, title: "Share the link", text: "Send the unique, hard-to-guess link to one friend." },
-  { icon: UsersIcon, title: "Chat one-to-one", text: "Only two people can ever be inside. Nobody else can join." },
-  { icon: ArchiveIcon, title: "Save & close", text: "Close the room when you're done and it's locked for good." },
+  { icon: MessageIcon, title: "Create a room", text: "Enter your name and get a chat room in one click." },
+  { icon: LinkIcon, title: "Share the link", text: "Send the room link to your friend on any app." },
+  { icon: UsersIcon, title: "Chat together", text: "Text, emoji, photos, videos and files — all in one place." },
+  { icon: ArchiveIcon, title: "Save the chat", text: "Save the room when you're done and find it later in My Rooms." },
 ];
 
 export default function HomePage() {
@@ -14,7 +16,12 @@ export default function HomePage() {
     <div className="flex min-h-dvh flex-col bg-white">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <Logo />
-        <span className="hidden text-sm text-neutral-500 sm:block">No sign-up. No tracking. Just chat.</span>
+        <Link
+          href="/rooms"
+          className="inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold text-neutral-800 ring-1 ring-neutral-200 hover:bg-neutral-50"
+        >
+          My Rooms
+        </Link>
       </header>
 
       <main className="flex-1">
@@ -22,27 +29,27 @@ export default function HomePage() {
           <div>
             <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
               <span className="size-1.5 rounded-full bg-indigo-600" />
-              Private two-person chat rooms
+              Free · No sign-up needed
             </p>
             <h1 className="text-3xl leading-tight font-bold tracking-tight text-neutral-950 sm:text-5xl lg:text-6xl">
-              Private Conversations.
+              Start a Conversation.
               <br />
-              <span className="text-indigo-600">Simple Chat Rooms.</span>
+              <span className="text-indigo-600">Share One Link.</span>
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-neutral-600 sm:text-lg">
-              Create a private room, share the link with one friend, and talk one-to-one. Send messages, emoji,
-              photos, videos and documents — then save and close the room when you&apos;re done.
+              Create a chat room, send the link to a friend and start talking. Share messages, emoji, photos, videos
+              and documents — then save the room to keep the conversation.
             </p>
           </div>
 
           <div className="rounded-3xl bg-neutral-950 p-5 shadow-2xl shadow-indigo-900/20 sm:p-8">
             <div className="rounded-2xl bg-white p-5 sm:p-6">
-              <h2 className="text-lg font-semibold text-neutral-950">Start a private room</h2>
+              <h2 className="text-lg font-semibold text-neutral-950">Create a chat room</h2>
               <p className="mt-1 mb-5 text-sm text-neutral-500">Your friend will be asked for their name when they join.</p>
               <CreateRoomForm />
             </div>
             <p className="mt-4 flex items-center justify-center gap-2 text-xs text-neutral-400">
-              <LockIcon className="size-3.5" /> Maximum 2 members per room
+              <UsersIcon className="size-3.5" /> Each room is for you and one friend
             </p>
           </div>
         </section>
@@ -66,7 +73,7 @@ export default function HomePage() {
       </main>
 
       <footer className="bg-neutral-950 py-6 text-center text-xs text-neutral-400">
-        © {new Date().getFullYear()} PrivyChat · Private one-to-one conversations
+        © {new Date().getFullYear()} {APP_NAME} · Simple chat rooms
       </footer>
     </div>
   );

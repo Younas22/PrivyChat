@@ -1,4 +1,5 @@
 import { Readable } from "node:stream";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AppError, errorResponse } from "@/lib/server/errors";
 import { authorizeFileAccess, fileUrlForKey } from "@/lib/server/rooms";
@@ -36,12 +37,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ key: str
       where: { roomId: match[1], fileUrl: fileUrlForKey(key), deletedAt: null },
       select: { fileName: true, fileMimeType: true },
     });
+    if (!message) throw notFound();
     const storage = getStorage();
-    const size = await storage.size(key);
-    if (!message || size === null) throw notFound();
-
     const mime = message.fileMimeType ?? "application/octet-stream";
     const download = new URL(req.url).searchParams.has("download") || !INLINE_TYPES.test(mime);
+
+    // Object storage: hand the (unguessable) file URL to the authorized member only.
+    if (storage.redirectUrl) {
+      const target = await storage.redirectUrl(key);
+      if (!target) throw notFound();
+      const res = NextResponse.redirect(download ? `${target}?download=1` : target, 302);
+      res.headers.set("Cache-Control", "private, no-store");
+      res.headers.set("Referrer-Policy", "no-referrer");
+      return res;
+    }
+
+    const size = await storage.size(key);
+    if (size === null) throw notFound();
     const name = message.fileName ?? "file";
     const asciiName = name.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
 

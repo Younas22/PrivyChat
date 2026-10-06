@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import { APP_NAME } from "@/lib/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PrivyChat — Private one-to-one chat rooms",
-  description: "Create a private chat room, share the link with one friend, and talk one-to-one. No sign-up required.",
+  title: `${APP_NAME} — Simple chat rooms for two`,
+  description: "Create a chat room, share the link with a friend, and start talking. No sign-up needed.",
 };
 
 export const viewport: Viewport = {

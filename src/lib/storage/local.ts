@@ -1,21 +1,22 @@
 import "server-only";
 import { createReadStream } from "node:fs";
-import { mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { StorageDriver } from "./types";
 
 const KEY_PATTERN = /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_.-]+)*$/;
 
 export class LocalStorageDriver implements StorageDriver {
+  readonly clientUploads = false;
   private root: string;
 
   constructor(dir: string) {
-    this.root = path.resolve(process.cwd(), dir);
+    this.root = path.resolve(/*turbopackIgnore: true*/ process.cwd(), dir);
   }
 
   private resolve(key: string) {
     if (!KEY_PATTERN.test(key) || key.includes("..")) throw new Error("Invalid storage key");
-    const full = path.resolve(this.root, key);
+    const full = path.resolve(/*turbopackIgnore: true*/ this.root, key);
     if (!full.startsWith(this.root + path.sep)) throw new Error("Invalid storage key");
     return full;
   }
@@ -32,6 +33,17 @@ export class LocalStorageDriver implements StorageDriver {
       return s.isFile() ? s.size : null;
     } catch {
       return null;
+    }
+  }
+
+  async readStart(key: string, bytes: number) {
+    const handle = await open(this.resolve(key), "r");
+    try {
+      const buf = Buffer.alloc(bytes);
+      const { bytesRead } = await handle.read(buf, 0, bytes, 0);
+      return buf.subarray(0, bytesRead);
+    } finally {
+      await handle.close();
     }
   }
 

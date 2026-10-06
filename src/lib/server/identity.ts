@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 
-export const IDENTITY_COOKIE = "privychat_uid";
+export const IDENTITY_COOKIE = "talkroom_uid";
 const ONE_YEAR = 60 * 60 * 24 * 365;
 const ID_PATTERN = /^[A-Za-z0-9_-]{32,64}$/;
 

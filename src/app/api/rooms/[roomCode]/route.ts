@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ roomCode: string }> };
 export async function GET(_req: Request, { params }: Ctx) {
   try {
     const { roomCode } = await params;
-    const { room, user, isOwner } = await requireMember(roomCode);
+    const { room, user, isOwner } = await requireMember(roomCode, { ownerCanReadSaved: true });
     return NextResponse.json({
       room: toRoomInfo(room),
       viewer: { userId: user.id, displayName: user.displayName, isOwner },

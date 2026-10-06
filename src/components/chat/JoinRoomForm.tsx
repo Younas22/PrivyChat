@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { joinRoomAction, type FormState } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/ui/Logo";
-import { AlertIcon, LockIcon } from "@/components/ui/icons";
+import { AlertIcon, MessageIcon } from "@/components/ui/icons";
 
 interface JoinRoomFormProps {
   roomCode: string;
@@ -24,10 +24,10 @@ export function JoinRoomForm({ roomCode, roomName, ownerName, defaultName }: Joi
       <main className="flex flex-1 items-center justify-center px-4 pb-16">
         <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
           <div className="mb-5 grid size-12 place-items-center rounded-2xl bg-indigo-600 text-white">
-            <LockIcon className="size-6" />
+            <MessageIcon className="size-6" />
           </div>
           <p className="text-sm text-neutral-500">
-            <span className="font-medium text-neutral-800">{ownerName}</span> invited you to a private chat
+            <span className="font-medium text-neutral-800">{ownerName}</span> invited you to chat
           </p>
           <h1 className="mt-1 text-xl font-bold break-words text-neutral-950 sm:text-2xl">{roomName}</h1>
 
@@ -57,7 +57,7 @@ export function JoinRoomForm({ roomCode, roomName, ownerName, defaultName }: Joi
               {pending ? "Joining…" : "Join Chat Room"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-xs text-neutral-400">Only two people can be in this room.</p>
+          <p className="mt-4 text-center text-xs text-neutral-400">Each room has space for two people.</p>
         </div>
       </main>
     </div>

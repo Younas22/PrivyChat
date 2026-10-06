@@ -1,19 +1,19 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/ui/Logo";
-import { AlertIcon, ArchiveIcon, LockIcon, UsersIcon } from "@/components/ui/icons";
+import { AlertIcon, ArchiveIcon, UserMinusIcon, UsersIcon } from "@/components/ui/icons";
 
 export type NoticeKind = "closed" | "full" | "not_found" | "removed" | "deleted";
 
 const NOTICES: Record<NoticeKind, { title: string; text: string; icon: ReactNode }> = {
   closed: {
     title: "This chat room has been closed.",
-    text: "The owner saved and closed this room. It can't be opened or joined again.",
+    text: "The owner saved and closed this room, so it can no longer be opened or joined.",
     icon: <ArchiveIcon className="size-7" />,
   },
   full: {
     title: "This chat room is full.",
-    text: "PrivyChat rooms are private and allow only two people. Ask your friend to create a new room for you.",
+    text: "Each room has space for two people. Ask your friend to create a new room for you.",
     icon: <UsersIcon className="size-7" />,
   },
   not_found: {
@@ -24,7 +24,7 @@ const NOTICES: Record<NoticeKind, { title: string; text: string; icon: ReactNode
   removed: {
     title: "You were removed from this room.",
     text: "The room owner removed you, so you can no longer read or send messages here.",
-    icon: <LockIcon className="size-7" />,
+    icon: <UserMinusIcon className="size-7" />,
   },
   deleted: {
     title: "This chat room was deleted.",

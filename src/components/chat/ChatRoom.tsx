@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChatMessage, MessagesPage, RoomEvent, RoomInfo, RoomMemberInfo, Viewer } from "@/lib/types";
+import type { ChatMessage, MessagesPage, RealtimeConfig, RoomEvent, RoomInfo, RoomMemberInfo, Viewer } from "@/lib/types";
+import { directUpload } from "@/lib/client/direct-upload";
 import { api, ApiError, uploadWithProgress } from "@/lib/client/api";
+import { APP_NAME } from "@/lib/brand";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Dialog } from "@/components/ui/Dialog";
 import { Logo } from "@/components/ui/Logo";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
-import { CopyIcon, LockIcon, MenuIcon, XIcon } from "@/components/ui/icons";
+import { CopyIcon, MenuIcon, MessageIcon, XIcon } from "@/components/ui/icons";
 import { Composer, type UploadLimits } from "./Composer";
 import { Lightbox } from "./Lightbox";
 import { MessageList, type MessageListHandle, type PendingText, type PendingUpload } from "./MessageList";
@@ -24,6 +26,8 @@ interface ChatRoomProps {
   initialMessages: ChatMessage[];
   initialHasMore: boolean;
   limits: UploadLimits;
+  realtime: RealtimeConfig;
+  directUploads: boolean;
 }
 
 type Confirm =
@@ -51,7 +55,15 @@ export function ChatRoom(props: ChatRoomProps) {
   );
 }
 
-function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, initialHasMore, limits }: ChatRoomProps) {
+function ChatRoomInner({
+  initialRoom,
+  viewer: initialViewer,
+  initialMessages,
+  initialHasMore,
+  limits,
+  realtime,
+  directUploads,
+}: ChatRoomProps) {
   const router = useRouter();
   const toast = useToast();
   const roomCode = initialRoom.roomCode;
@@ -77,6 +89,10 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
   const listRef = useRef<MessageListHandle>(null);
   const messagesRef = useRef(messages);
   const hasMoreRef = useRef(hasMore);
+  const roomRef = useRef(room);
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
   useEffect(() => {
     messagesRef.current = messages;
     hasMoreRef.current = hasMore;
@@ -87,15 +103,27 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
     setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
   }, []);
 
+  const isSaved = room.status === "closed";
+
+  /** Owner keeps a read-only view of a saved room; everyone else is locked out. */
+  const onRoomClosed = useCallback(() => {
+    if (viewer.isOwner) {
+      setRoom((r) => ({ ...r, status: "closed", closedAt: r.closedAt ?? new Date().toISOString() }));
+      setReplyTo(null);
+    } else {
+      setStatus("closed");
+    }
+  }, [viewer.isOwner]);
+
   /** Maps permission errors to the matching full-screen state; returns true if handled. */
   const handleFatal = useCallback((err: unknown) => {
     if (!(err instanceof ApiError)) return false;
-    if (err.code === "room_closed") setStatus("closed");
+    if (err.code === "room_closed") onRoomClosed();
     else if (err.code === "room_not_found") setStatus("deleted");
     else if (["member_removed", "not_member", "no_identity"].includes(err.code)) setStatus("removed");
     else return false;
     return true;
-  }, []);
+  }, [onRoomClosed]);
 
   const reportError = useCallback(
     (err: unknown) => {
@@ -139,14 +167,14 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
           }
           break;
         case "room:closed":
-          setStatus("closed");
+          onRoomClosed();
           break;
         case "room:deleted":
           setStatus("deleted");
           break;
       }
     },
-    [viewer.userId, toast],
+    [viewer.userId, toast, onRoomClosed],
   );
 
   const resync = useCallback(async () => {
@@ -155,6 +183,12 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
         api<{ room: RoomInfo; viewer: Viewer }>(base),
         api<MessagesPage>(`${base}/messages`),
       ]);
+      // Pusher signals carry no names, so announce new members here.
+      const known = new Set(roomRef.current.members.map((m) => m.userId));
+      for (const m of roomRes.room.members) {
+        if (!known.has(m.userId) && m.userId !== roomRes.viewer.userId) toast(`${m.displayName} joined the room`, "success");
+      }
+      roomRef.current = roomRes.room;
       setRoom(roomRes.room);
       setViewer(roomRes.viewer);
       setMessages((list) => {
@@ -168,9 +202,9 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
     } catch (err) {
       handleFatal(err); // network errors are silent here; polling keeps retrying
     }
-  }, [base, handleFatal]);
+  }, [base, handleFatal, toast]);
 
-  const connection = useRoomEvents(roomCode, status === "active", { onEvent, onResync: resync });
+  const connection = useRoomEvents(roomCode, status === "active" && !isSaved, realtime, { onEvent, onResync: resync });
 
   // ---------- messages ----------
 
@@ -220,14 +254,26 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
 
   const sendFile = useCallback(
     async (item: PendingUpload) => {
-      const form = new FormData();
-      form.append("file", item.file);
-      if (item.caption) form.append("caption", item.caption);
-      if (item.replyTo) form.append("replyToMessageId", item.replyTo.id);
+      const onProgress = (progress: number) =>
+        setUploads((u) => u.map((x) => (x.tempId === item.tempId ? { ...x, progress } : x)));
       try {
-        const { message } = await uploadWithProgress<{ message: ChatMessage }>(`${base}/upload`, form, (progress) =>
-          setUploads((u) => u.map((x) => (x.tempId === item.tempId ? { ...x, progress } : x))),
-        );
+        let message: ChatMessage;
+        if (directUploads) {
+          ({ message } = await directUpload({
+            base,
+            roomId: roomRef.current.id,
+            file: item.file,
+            caption: item.caption,
+            replyToMessageId: item.replyTo?.id ?? null,
+            onProgress,
+          }));
+        } else {
+          const form = new FormData();
+          form.append("file", item.file);
+          if (item.caption) form.append("caption", item.caption);
+          if (item.replyTo) form.append("replyToMessageId", item.replyTo.id);
+          ({ message } = await uploadWithProgress<{ message: ChatMessage }>(`${base}/upload`, form, onProgress));
+        }
         setUploads((u) => u.filter((x) => x.tempId !== item.tempId));
         setMessages((list) => upsert(list, [message]));
       } catch (err) {
@@ -237,7 +283,7 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
         toast(error, "error");
       }
     },
-    [base, handleFatal, toast],
+    [base, handleFatal, toast, directUploads],
   );
 
   const onSendFile = (file: File, caption: string) => {
@@ -283,7 +329,7 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
 
   const shareLink = async () => {
     try {
-      await navigator.share({ title: "PrivyChat", text: `Join my private chat room "${room.name}"`, url: roomUrl() });
+      await navigator.share({ title: APP_NAME, text: `Join my chat room "${room.name}"`, url: roomUrl() });
     } catch {
       /* user cancelled */
     }
@@ -295,7 +341,8 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
     try {
       if (confirm.kind === "close") {
         await api(`${base}/close`, { method: "POST" });
-        setStatus("closed");
+        onRoomClosed();
+        toast("Room saved. You can find it anytime in My Rooms.", "success");
       } else if (confirm.kind === "delete") {
         await api(base, { method: "DELETE" });
         router.replace("/");
@@ -370,7 +417,8 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
   const confirmCopy: Record<Confirm["kind"], { title: string; message: string; label: string }> = {
     close: {
       title: "Save & Close Room",
-      message: "Close this room? After closing, nobody will be able to access the chat again.",
+      message:
+        "Save and close this room? Your friend won't be able to open it again and no new messages can be sent. You can still read it from My Rooms.",
       label: "Save & Close",
     },
     delete: {
@@ -402,8 +450,8 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
 
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-3 border-b border-neutral-200 bg-white px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-5">
-          <Link href="/" className="grid size-9 shrink-0 place-items-center rounded-lg bg-indigo-600 text-white lg:hidden" aria-label="PrivyChat home">
-            <LockIcon className="size-4" />
+          <Link href="/" className="grid size-9 shrink-0 place-items-center rounded-lg bg-indigo-600 text-white lg:hidden" aria-label={`${APP_NAME} home`}>
+            <MessageIcon className="size-4" />
           </Link>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold text-neutral-950">{room.name}</h1>
@@ -412,17 +460,26 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
                 {room.members.length} {room.members.length === 1 ? "Member" : "Members"}
               </span>
               <span className="text-neutral-300">·</span>
-              <ConnectionBadge connection={connection} />
+              {isSaved ? <span className="text-xs font-medium text-neutral-700">Saved · read-only</span> : <ConnectionBadge connection={connection} />}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={copyLink}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-50"
-          >
-            <CopyIcon className="size-4" />
-            <span className="hidden sm:inline">Copy Link</span>
-          </button>
+          {isSaved ? (
+            <Link
+              href="/rooms"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-50"
+            >
+              My Rooms
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={copyLink}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-50"
+            >
+              <CopyIcon className="size-4" />
+              <span className="hidden sm:inline">Copy Link</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setSheetOpen(true)}
@@ -442,8 +499,8 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
           hasMore={hasMore}
           loadingOlder={loadingOlder}
           highlightedId={highlightedId}
-          canAct
-          isAlone={isAlone}
+          canAct={!isSaved}
+          isAlone={isAlone && !isSaved}
           onLoadOlder={loadOlder}
           onReply={onReply}
           onDelete={onDelete}
@@ -467,6 +524,11 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
           onCopyLink={copyLink}
         />
 
+        {isSaved ? (
+          <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center text-sm text-neutral-600">
+            This room was saved{room.closedAt ? ` on ${new Date(room.closedAt).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" })}` : ""}. You can read it, but no new messages can be sent.
+          </div>
+        ) : (
         <Composer
           replyTo={replyTo}
           limits={limits}
@@ -475,6 +537,7 @@ function ChatRoomInner({ initialRoom, viewer: initialViewer, initialMessages, in
           onSendFile={onSendFile}
           onError={(m) => toast(m, "error")}
         />
+        )}
       </section>
 
       {/* Mobile / tablet room sheet */}

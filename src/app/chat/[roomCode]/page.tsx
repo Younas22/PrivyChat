@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { APP_NAME } from "@/lib/brand";
 import { ChatRoom } from "@/components/chat/ChatRoom";
 import { JoinRoomForm } from "@/components/chat/JoinRoomForm";
 import { RoomNotice } from "@/components/chat/RoomNotice";
 import { listMessages, resolveRoomAccess } from "@/lib/server/rooms";
 import { toRoomInfo } from "@/lib/server/serialize";
+import { pusherConfig } from "@/lib/server/realtime";
 import { maxSizeFor } from "@/lib/server/uploads";
+import { getStorage } from "@/lib/storage";
 
 export const metadata: Metadata = {
-  title: "Private chat room · PrivyChat",
+  title: `Chat room · ${APP_NAME}`,
   robots: { index: false, follow: false },
 };
 
@@ -32,9 +35,11 @@ export default async function ChatPage({ params }: PageProps<"/chat/[roomCode]">
         />
       );
     }
+    case "saved":
     case "member": {
       const { room, user } = access;
       const page = await listMessages(roomCode);
+      const pusher = pusherConfig();
       return (
         <ChatRoom
           initialRoom={toRoomInfo(room)}
@@ -42,6 +47,8 @@ export default async function ChatPage({ params }: PageProps<"/chat/[roomCode]">
           initialMessages={page.messages}
           initialHasMore={page.hasMore}
           limits={{ image: maxSizeFor("image"), video: maxSizeFor("video"), document: maxSizeFor("document") }}
+          realtime={pusher ? { provider: "pusher", key: pusher.key, cluster: pusher.cluster } : { provider: "sse" }}
+          directUploads={getStorage().clientUploads}
         />
       );
     }

@@ -47,3 +47,36 @@ export function categoryOf(name: string): "image" | "video" | "document" | null 
   if (DOC_EXT.includes(ext)) return "document";
   return null;
 }
+
+/** Canonical Content-Type per extension (must match the server's allowed types). */
+const MIME_BY_EXT: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  mp4: "video/mp4",
+  m4v: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+  ogv: "video/ogg",
+  pdf: "application/pdf",
+  doc: "application/msword",
+  xls: "application/vnd.ms-excel",
+  ppt: "application/vnd.ms-powerpoint",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  odt: "application/vnd.oasis.opendocument.text",
+  ods: "application/vnd.oasis.opendocument.spreadsheet",
+  zip: "application/zip",
+  rtf: "application/rtf",
+  txt: "text/plain",
+  csv: "text/csv",
+  md: "text/markdown",
+  json: "application/json",
+};
+
+export function mimeForName(name: string) {
+  return MIME_BY_EXT[fileExtension(name).toLowerCase()] ?? "application/octet-stream";
+}

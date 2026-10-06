@@ -38,12 +38,14 @@ export interface RoomMemberInfo {
 }
 
 export interface RoomInfo {
+  id: string;
   roomCode: string;
   name: string;
   status: "open" | "closed";
   ownerId: string;
   members: RoomMemberInfo[];
   createdAt: string;
+  closedAt: string | null;
 }
 
 export interface Viewer {
@@ -51,6 +53,9 @@ export interface Viewer {
   displayName: string;
   isOwner: boolean;
 }
+
+/** How the browser receives live updates: Pusher in production, local SSE otherwise. */
+export type RealtimeConfig = { provider: "pusher"; key: string; cluster: string } | { provider: "sse" };
 
 export type RoomEvent =
   | { type: "message:new"; message: ChatMessage }
@@ -64,4 +69,16 @@ export type RoomEvent =
 export interface MessagesPage {
   messages: ChatMessage[];
   hasMore: boolean;
+}
+
+export interface OwnedRoomSummary {
+  roomCode: string;
+  name: string;
+  status: "open" | "closed";
+  createdAt: string;
+  closedAt: string | null;
+  lastActivityAt: string;
+  memberNames: string[];
+  messageCount: number;
+  lastMessage: string | null;
 }

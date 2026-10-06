@@ -172,7 +172,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               <p className="mt-1 text-sm text-neutral-500">
                 {props.isAlone
                   ? "Share the room link with your friend. Once they join, you can start chatting."
-                  : "Say hello! Messages are only visible to the two of you."}
+                  : "Say hello and start the conversation 👋"}
               </p>
               {props.isAlone && (
                 <button

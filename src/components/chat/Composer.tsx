@@ -55,16 +55,11 @@ export function Composer({ disabled, replyTo, limits, onCancelReply, onSendText,
     if (replyTo) textareaRef.current?.focus();
   }, [replyTo]);
 
-  // Object URL for image previews.
+  // Release the image preview's object URL when it changes or unmounts.
   useEffect(() => {
-    if (!file || categoryOf(file.name) !== "image") {
-      setPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    if (!preview) return;
+    return () => URL.revokeObjectURL(preview);
+  }, [preview]);
 
   // Close emoji picker on outside click.
   useEffect(() => {
@@ -85,6 +80,7 @@ export function Composer({ disabled, replyTo, limits, onCancelReply, onSendText,
     }
     if (f.size === 0) return onError("This file is empty.");
     setFile(f);
+    setPreview(category === "image" ? URL.createObjectURL(f) : null);
   };
 
   const insertEmoji = (emoji: string) => {
@@ -106,6 +102,7 @@ export function Composer({ disabled, replyTo, limits, onCancelReply, onSendText,
     if (file) {
       onSendFile(file, content);
       setFile(null);
+      setPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } else if (content) {
       onSendText(content);
@@ -166,6 +163,7 @@ export function Composer({ disabled, replyTo, limits, onCancelReply, onSendText,
             type="button"
             onClick={() => {
               setFile(null);
+              setPreview(null);
               if (fileInputRef.current) fileInputRef.current.value = "";
             }}
             className="grid size-9 shrink-0 place-items-center rounded-full text-neutral-500 hover:bg-neutral-200"

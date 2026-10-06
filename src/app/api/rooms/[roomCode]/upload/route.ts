@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { AppError, errorResponse, Errors } from "@/lib/server/errors";
 import { rateLimit } from "@/lib/server/rate-limit";
 import { createMessage, fileUrlForKey, requireMember } from "@/lib/server/rooms";
-import { maxUploadBytes, validateUpload } from "@/lib/server/uploads";
+import { maxUploadBytes, planUpload, randomStoredName, verifyContent } from "@/lib/server/uploads";
 import { getStorage } from "@/lib/storage";
 import { idSchema } from "@/lib/validation";
 
@@ -28,21 +28,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ roomCod
     const replyToMessageId = typeof replyRaw === "string" && idSchema.safeParse(replyRaw).success ? replyRaw : null;
 
     const data = Buffer.from(await file.arrayBuffer());
-    const upload = await validateUpload(file.name, data);
+    const plan = planUpload(file.name, data.length);
+    const mimeType = await verifyContent(plan, data, true);
 
-    storedKey = `${room.id}/${upload.storedName}`;
-    await getStorage().put(storedKey, data, upload.mimeType);
+    storedKey = `${room.id}/${randomStoredName(plan.ext)}`;
+    await getStorage().put(storedKey, data, mimeType);
 
     const message = await createMessage({
       user,
-      roomId: room.id,
+      room,
       content: caption || null,
       replyToMessageId,
       file: {
-        type: upload.category,
-        name: upload.safeName,
+        type: plan.category,
+        name: plan.safeName,
         url: fileUrlForKey(storedKey),
-        mimeType: upload.mimeType,
+        mimeType,
         size: data.length,
       },
     });

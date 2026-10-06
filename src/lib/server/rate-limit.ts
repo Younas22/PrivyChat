@@ -3,7 +3,7 @@ import { Errors } from "./errors";
 
 type Bucket = { hits: number[] };
 const globalForLimits = globalThis as unknown as { rateBuckets?: Map<string, Bucket> };
-const buckets = (globalForLimits.rateBuckets ??= new Map());
+const buckets = (globalForLimits.rateBuckets ??= new Map<string, Bucket>());
 
 /**
  * Basic in-memory sliding-window rate limiter (per process).
