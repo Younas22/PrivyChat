@@ -81,7 +81,7 @@ function Attachment({
     );
   }
   return (
-    <div className={`flex items-center gap-3 rounded-xl p-2.5 ${isMine ? "bg-white/15" : "bg-white"}`}>
+    <div className={`flex items-center gap-3 rounded-xl p-2.5 ${isMine ? "bg-white/15" : "bg-white shadow-sm ring-1 ring-neutral-200"}`}>
       <span
         className={`grid size-11 shrink-0 place-items-center rounded-lg ${
           isMine ? "bg-white text-indigo-600" : "bg-indigo-600 text-white"
@@ -134,6 +134,9 @@ function MessageBubbleImpl({
   onImageClick,
 }: MessageBubbleProps) {
   const hasMedia = !message.isDeleted && (message.type === "image" || message.type === "video");
+  // Documents render as a plain file card with no colored bubble behind it.
+  const isDoc = !message.isDeleted && message.type === "document";
+  const tinted = isMine && !isDoc;
 
   const handleBubbleClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("a,button,video")) return;
@@ -160,35 +163,40 @@ function MessageBubbleImpl({
       <div className={`flex max-w-full items-center gap-1.5 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
         <div
           onClick={handleBubbleClick}
-          className={`relative min-w-0 rounded-2xl px-3 py-2 shadow-sm transition ${
-            hasMedia ? "w-64 max-w-[calc(100vw-7.5rem)] sm:w-80" : "max-w-[calc(100vw-7.5rem)] sm:max-w-md lg:max-w-lg"
+          className={`relative min-w-0 rounded-2xl transition ${
+            hasMedia || isDoc ? "w-64 max-w-[calc(100vw-7.5rem)] sm:w-80" : "max-w-[calc(100vw-7.5rem)] sm:max-w-md lg:max-w-lg"
           } ${
-            message.isDeleted
-              ? "bg-neutral-100 text-neutral-500 ring-1 ring-neutral-200"
-              : isMine
-                ? "rounded-br-md bg-indigo-600 text-white"
-                : "rounded-bl-md bg-neutral-100 text-neutral-900"
+            isDoc
+              ? "text-neutral-900"
+              : message.isDeleted
+                ? "bg-neutral-100 px-3 py-2 text-neutral-500 shadow-sm ring-1 ring-neutral-200"
+                : isMine
+                  ? "rounded-br-md bg-indigo-600 px-3 py-2 text-white shadow-sm"
+                  : "rounded-bl-md bg-neutral-100 px-3 py-2 text-neutral-900 shadow-sm"
           } ${highlighted ? "animate-flash" : ""}`}
         >
           {message.replyTo && !message.isDeleted && (
-            <QuoteBlock reply={message.replyTo} isMine={isMine} onClick={() => onQuoteClick(message.replyTo!.id)} />
+            <QuoteBlock reply={message.replyTo} isMine={tinted} onClick={() => onQuoteClick(message.replyTo!.id)} />
           )}
 
           {message.isDeleted ? (
             <p className="text-sm italic">This message was deleted</p>
           ) : (
             <>
-              {message.file && <Attachment message={message} isMine={isMine} onImageClick={onImageClick} />}
+              {message.file && <Attachment message={message} isMine={tinted} onImageClick={onImageClick} />}
               {message.content && (
-                <LinkifiedText text={message.content} className={`text-[15px] leading-snug ${message.file ? "mt-2" : ""}`} />
+                <LinkifiedText
+                  text={message.content}
+                  className={`text-[15px] leading-snug ${message.file ? "mt-2" : ""} ${isDoc ? "px-1" : ""}`}
+                />
               )}
             </>
           )}
 
           <span
             className={`mt-1 block text-right text-[11px] leading-none ${
-              isMine && !message.isDeleted ? "text-indigo-200" : "text-neutral-400"
-            }`}
+              tinted && !message.isDeleted ? "text-indigo-200" : "text-neutral-400"
+            } ${isDoc ? "px-1" : ""}`}
           >
             {formatTime(message.createdAt)}
           </span>
