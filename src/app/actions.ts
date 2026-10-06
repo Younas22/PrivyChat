@@ -16,8 +16,8 @@ async function clientKey() {
 
 function friendly(err: unknown): FormState {
   if (err instanceof AppError) return { error: err.message };
-  console.error(err);
-  return { error: "We couldn't reach the server. Please try again." };
+  console.error("Room action failed:", err);
+  return { error: "Something went wrong on our side. Please try again in a moment." };
 }
 
 export async function createRoomAction(_prev: FormState, formData: FormData): Promise<FormState> {

@@ -9,7 +9,7 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
  * Serverless platforms run many instances, so each keeps a small pool (DB_CONNECTION_LIMIT)
  * to stay under the database's per-user connection limit. Add `?ssl=true` to the URL for TLS.
  */
-function poolConfig(url: string) {
+export function poolConfig(url: string) {
   const u = new URL(url);
   const ssl = ["true", "1", "required"].includes((u.searchParams.get("ssl") ?? "").toLowerCase());
   return {
@@ -18,8 +18,13 @@ function poolConfig(url: string) {
     user: decodeURIComponent(u.username),
     password: decodeURIComponent(u.password),
     database: decodeURIComponent(u.pathname.replace(/^\//, "")),
-    connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 5,
+    connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 3,
     connectTimeout: 10_000,
+    // Shared hosts (e.g. Hostinger: wait_timeout=20s) kill idle connections quickly.
+    // Close idle connections before the server does; the pool also re-validates before reuse.
+    // (minimumIdle must be >= 1: mariadb 3.4 never opens connections with 0.)
+    idleTimeout: Number(process.env.DB_IDLE_TIMEOUT_SECONDS) || 15,
+    minimumIdle: 1,
     ...(ssl ? { ssl: { rejectUnauthorized: true } } : {}),
   };
 }

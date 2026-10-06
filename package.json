@@ -23,7 +23,8 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
-    "zod": "^4"
+    "zod": "^4",
+    "mariadb": "3.4.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
