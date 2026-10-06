@@ -216,7 +216,7 @@ interface NewMessageInput {
   room: RoomRef;
   content: string | null;
   replyToMessageId?: string | null;
-  file?: { type: "image" | "video" | "document"; name: string; url: string; mimeType: string; size: number };
+  file?: { type: "image" | "video" | "document" | "audio"; name: string; url: string; mimeType: string; size: number };
 }
 
 export async function createMessage(input: NewMessageInput): Promise<ChatMessage> {
@@ -332,7 +332,7 @@ export async function authorizeFileAccess(roomId: string) {
 
 // ---------- My Rooms ----------
 
-const TYPE_PREVIEW = { image: "📷 Photo", video: "🎬 Video", document: "📄 Document", text: "" } as const;
+const TYPE_PREVIEW = { image: "📷 Photo", video: "🎬 Video", document: "📄 Document", audio: "🎤 Voice message", text: "" } as const;
 
 /** Rooms created by the current browser's user, newest activity first. */
 export async function listOwnedRooms(): Promise<OwnedRoomSummary[]> {

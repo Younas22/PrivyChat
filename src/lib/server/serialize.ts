@@ -20,7 +20,7 @@ export const messageInclude = {
 
 type MessageWithRelations = Prisma.MessageGetPayload<{ include: typeof messageInclude }>;
 
-const TYPE_LABEL = { image: "Photo", video: "Video", document: "Document", text: "Message" } as const;
+const TYPE_LABEL = { image: "Photo", video: "Video", document: "Document", audio: "Voice message", text: "Message" } as const;
 
 /** Groups reaction rows by emoji, keeping the order each emoji was first used. */
 export function groupReactions(rows: { emoji: string; userId: string }[]): ReactionGroup[] {
@@ -54,7 +54,8 @@ export function toChatMessage(m: MessageWithRelations): ChatMessage {
           preview:
             r.deletedAt !== null
               ? "Message deleted"
-              : r.content?.slice(0, 140) || (r.fileName ? `${TYPE_LABEL[r.type]}: ${r.fileName}` : TYPE_LABEL[r.type]),
+              : r.content?.slice(0, 140) ||
+                (r.fileName && r.type !== "audio" ? `${TYPE_LABEL[r.type]}: ${r.fileName}` : TYPE_LABEL[r.type]),
         }
       : null,
   };

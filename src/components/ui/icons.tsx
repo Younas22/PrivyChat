@@ -221,3 +221,21 @@ export const ChevronDownIcon = (p: IconProps) => (
     <path d="m6 9 6 6 6-6" />
   </Icon>
 );
+export const MicIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="9" y="2" width="6" height="12" rx="3" />
+    <path d="M19 10v1a7 7 0 0 1-14 0v-1" />
+    <line x1="12" y1="18" x2="12" y2="22" />
+  </Icon>
+);
+export const PlayIcon = (p: IconProps) => (
+  <Icon {...p} fill="currentColor">
+    <polygon points="6 3 20 12 6 21 6 3" />
+  </Icon>
+);
+export const PauseIcon = (p: IconProps) => (
+  <Icon {...p} fill="currentColor">
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  </Icon>
+);

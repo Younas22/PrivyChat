@@ -282,7 +282,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                         <FileIcon className="size-9 shrink-0 text-indigo-600" />
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-neutral-900">{u.file.name}</p>
+                        <p className="truncate text-sm font-medium text-neutral-900">
+                          {/^voice-d+./.test(u.file.name) ? "🎤 Voice message" : u.file.name}
+                        </p>
                         <p className={`text-xs ${u.status === "failed" ? "text-red-600" : "text-neutral-500"}`}>
                           {u.status === "failed" ? u.error : `Uploading… ${Math.round(u.progress * 100)}% of ${formatBytes(u.file.size)}`}
                         </p>

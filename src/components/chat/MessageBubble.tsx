@@ -7,6 +7,7 @@ import { formatTime } from "@/lib/client/time";
 import { Avatar } from "@/components/ui/Avatar";
 import { DownloadIcon, ExternalIcon, FileIcon, ReplyIcon, SmileIcon, TrashIcon } from "@/components/ui/icons";
 import { LinkifiedText } from "./LinkifiedText";
+import { VoicePlayer } from "./VoicePlayer";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -63,12 +64,15 @@ export function QuoteBlock({
 
 function Attachment({
   message,
+  tinted,
   onImageClick,
 }: {
   message: ChatMessage;
+  tinted: boolean;
   onImageClick: (src: string, name: string) => void;
 }) {
   const file = message.file!;
+  if (message.type === "audio") return <VoicePlayer src={file.url} tinted={tinted} />;
   if (message.type === "image") {
     return (
       <button
@@ -269,7 +273,7 @@ function MessageBubbleImpl({
             <p className="text-sm italic">This message was deleted</p>
           ) : (
             <>
-              {message.file && <Attachment message={message} onImageClick={onImageClick} />}
+              {message.file && <Attachment message={message} tinted={tinted} onImageClick={onImageClick} />}
               {message.content && (
                 <LinkifiedText
                   text={message.content}

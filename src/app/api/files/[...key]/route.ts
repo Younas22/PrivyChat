@@ -5,7 +5,7 @@ import { authorizeFileAccess, fileUrlForKey } from "@/lib/server/rooms";
 import { getStorage } from "@/lib/storage";
 
 const KEY_PATTERN = /^([a-z0-9]{10,40})\/[a-f0-9]{32}\.[a-z0-9]{1,8}$/;
-const INLINE_TYPES = /^(image\/(jpeg|png|webp|gif)|video\/|application\/pdf$|text\/plain$)/;
+const INLINE_TYPES = /^(image\/(jpeg|png|webp|gif)|video\/|audio\/|application\/pdf$|text\/plain$)/;
 
 // Keep each streamed range below Vercel's ~4.5 MB response limit; media players fetch the next range.
 const MAX_RANGE_BYTES = 4 * 1024 * 1024;

@@ -1,6 +1,6 @@
 // Shared DTOs exchanged between server and client. Never include anonymousId here.
 
-export type MessageType = "text" | "image" | "video" | "document";
+export type MessageType = "text" | "image" | "video" | "document" | "audio";
 
 /** Quick reactions offered on every message (validated server-side). */
 export const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;

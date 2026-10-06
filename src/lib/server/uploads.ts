@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { fileTypeFromBuffer } from "file-type";
 import { Errors } from "./errors";
 
-export type UploadCategory = "image" | "video" | "document";
+export type UploadCategory = "image" | "video" | "document" | "audio";
 
 const MB = 1024 * 1024;
 const limitMb = (name: string, fallback: number) => {
@@ -40,6 +40,17 @@ const RULES: Record<UploadCategory, Record<string, string[]>> = {
     zip: ["application/zip"],
     rtf: ["application/rtf", "text/rtf"],
   },
+  // Voice notes (browser recordings: .weba / .ogg / .m4a) and common audio files.
+  audio: {
+    weba: ["audio/webm", "video/webm"],
+    ogg: ["audio/ogg", "audio/opus"],
+    oga: ["audio/ogg", "audio/opus"],
+    opus: ["audio/ogg", "audio/opus"],
+    m4a: ["audio/x-m4a", "audio/mp4", "audio/m4a", "video/mp4"],
+    mp3: ["audio/mpeg"],
+    wav: ["audio/wav", "audio/vnd.wave", "audio/x-wav"],
+    aac: ["audio/aac", "audio/x-aac"],
+  },
 };
 
 /** Plain-text documents have no magic bytes; accepted only if the content is valid UTF-8 text. */
@@ -62,16 +73,25 @@ const SERVE_MIME: Record<string, string> = {
   odt: "application/vnd.oasis.opendocument.text",
   ods: "application/vnd.oasis.opendocument.spreadsheet",
   m4v: "video/mp4",
+  weba: "audio/webm",
+  ogg: "audio/ogg",
+  oga: "audio/ogg",
+  opus: "audio/ogg",
+  m4a: "audio/mp4",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  aac: "audio/aac",
 };
 
 export function maxSizeFor(category: UploadCategory) {
   if (category === "image") return limitMb("MAX_IMAGE_MB", 10);
   if (category === "video") return limitMb("MAX_VIDEO_MB", 100);
+  if (category === "audio") return limitMb("MAX_AUDIO_MB", 25);
   return limitMb("MAX_DOCUMENT_MB", 25);
 }
 
 export function maxUploadBytes() {
-  return Math.max(maxSizeFor("image"), maxSizeFor("video"), maxSizeFor("document"));
+  return Math.max(maxSizeFor("image"), maxSizeFor("video"), maxSizeFor("document"), maxSizeFor("audio"));
 }
 
 function extensionOf(name: string) {
@@ -122,7 +142,7 @@ export function planUpload(originalName: string, size: number): UploadPlan {
   const category = categoryForExtension(ext);
   if (!category) {
     throw Errors.badRequest(
-      "This file type isn't supported. Send images, videos, or common documents (PDF, Office, text).",
+      "This file type isn't supported. Send images, videos, audio, or common documents (PDF, Office, text).",
     );
   }
   if (size <= 0) throw Errors.badRequest("This file is empty.");

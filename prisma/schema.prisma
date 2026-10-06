@@ -17,6 +17,7 @@ enum MessageType {
   image
   video
   document
+  audio
 }
 
 model User {

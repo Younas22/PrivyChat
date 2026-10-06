@@ -17,14 +17,16 @@ export function fileExtension(name: string) {
 
 const IMAGE_EXT = ["jpg", "jpeg", "png", "webp", "gif"];
 const VIDEO_EXT = ["mp4", "m4v", "webm", "mov", "ogv"];
+const AUDIO_EXT = ["weba", "ogg", "oga", "opus", "m4a", "mp3", "wav", "aac"];
 const DOC_EXT = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "rtf", "txt", "csv", "md", "json", "zip"];
 
-export const ACCEPT_ATTR = [...IMAGE_EXT, ...VIDEO_EXT, ...DOC_EXT].map((e) => `.${e}`).join(",");
+export const ACCEPT_ATTR = [...IMAGE_EXT, ...VIDEO_EXT, ...AUDIO_EXT, ...DOC_EXT].map((e) => `.${e}`).join(",");
 
-export function categoryOf(name: string): "image" | "video" | "document" | null {
+export function categoryOf(name: string): "image" | "video" | "audio" | "document" | null {
   const ext = fileExtension(name).toLowerCase();
   if (IMAGE_EXT.includes(ext)) return "image";
   if (VIDEO_EXT.includes(ext)) return "video";
+  if (AUDIO_EXT.includes(ext)) return "audio";
   if (DOC_EXT.includes(ext)) return "document";
   return null;
 }
@@ -56,6 +58,14 @@ const MIME_BY_EXT: Record<string, string> = {
   csv: "text/csv",
   md: "text/markdown",
   json: "application/json",
+  weba: "audio/webm",
+  ogg: "audio/ogg",
+  oga: "audio/ogg",
+  opus: "audio/ogg",
+  m4a: "audio/mp4",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  aac: "audio/aac",
 };
 
 export function mimeForName(name: string) {

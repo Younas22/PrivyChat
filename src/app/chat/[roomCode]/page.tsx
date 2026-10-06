@@ -46,7 +46,12 @@ export default async function ChatPage({ params }: PageProps<"/chat/[roomCode]">
           viewer={{ userId: user.id, displayName: user.displayName, isOwner: room.ownerId === user.id }}
           initialMessages={page.messages}
           initialHasMore={page.hasMore}
-          limits={{ image: maxSizeFor("image"), video: maxSizeFor("video"), document: maxSizeFor("document") }}
+          limits={{
+            image: maxSizeFor("image"),
+            video: maxSizeFor("video"),
+            audio: maxSizeFor("audio"),
+            document: maxSizeFor("document"),
+          }}
           realtime={pusher ? { provider: "pusher", key: pusher.key, cluster: pusher.cluster } : { provider: "sse" }}
           directUploads={getStorage().clientUploads ? (getStorage().clientAccess ?? "private") : null}
         />

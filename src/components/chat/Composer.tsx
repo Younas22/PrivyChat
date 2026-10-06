@@ -4,7 +4,8 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { ACCEPT_ATTR, categoryOf, formatBytes } from "@/lib/client/format";
-import { FileIcon, PaperclipIcon, ReplyIcon, SendIcon, SmileIcon, XIcon } from "@/components/ui/icons";
+import { FileIcon, MicIcon, PaperclipIcon, ReplyIcon, SendIcon, SmileIcon, TrashIcon, XIcon } from "@/components/ui/icons";
+import { useVoiceRecorder } from "./useVoiceRecorder";
 import { Spinner } from "@/components/ui/Spinner";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
@@ -16,7 +17,7 @@ const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
   ),
 });
 
-export type UploadLimits = { image: number; video: number; document: number };
+export type UploadLimits = { image: number; video: number; audio: number; document: number };
 
 interface ComposerProps {
   disabled?: boolean;
@@ -32,6 +33,7 @@ interface ComposerProps {
 
 function replyLabel(m: ChatMessage) {
   if (m.content) return m.content;
+  if (m.type === "audio") return "🎤 Voice message";
   if (m.file) return `${m.type === "image" ? "Photo" : m.type === "video" ? "Video" : "Document"}: ${m.file.name}`;
   return "Message";
 }
@@ -133,6 +135,51 @@ export function Composer({
   };
 
   const canSend = !disabled && (file !== null || text.trim().length > 0);
+
+  // Voice notes: the mic takes the send button's place while there's nothing to send.
+  const voice = useVoiceRecorder({
+    onComplete: (recorded) => onSendFile(recorded, ""),
+    onError,
+  });
+  const showMic = voice.supported && !disabled && !file && text.trim().length === 0;
+  const fmt = (secs: number) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+
+  if (voice.state === "recording") {
+    return (
+      <div className="border-t border-neutral-200 bg-white px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4">
+        {replyTo && (
+          <p className="mb-2 truncate rounded-xl bg-indigo-50 px-3 py-1.5 text-xs text-indigo-700">
+            Replying to {replyTo.senderName}
+          </p>
+        )}
+        <div className="flex items-center gap-2" role="status" aria-live="polite">
+          <button
+            type="button"
+            onClick={voice.cancel}
+            className="grid size-11 shrink-0 place-items-center rounded-full text-neutral-500 transition hover:bg-red-50 hover:text-red-600"
+            aria-label="Cancel recording"
+            title="Cancel"
+          >
+            <TrashIcon className="size-5" />
+          </button>
+          <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-2xl bg-red-50 px-4">
+            <span className="size-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
+            <span className="text-sm font-medium text-red-700 tabular-nums">{fmt(voice.elapsed)}</span>
+            <span className="truncate text-sm text-red-600/80">Recording… max {fmt(voice.maxSeconds)}</span>
+          </div>
+          <button
+            type="button"
+            onClick={voice.send}
+            className="grid size-11 shrink-0 place-items-center rounded-full bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-500"
+            aria-label="Send voice message"
+            title="Send"
+          >
+            <SendIcon className="size-5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border-t border-neutral-200 bg-white px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4">
@@ -253,15 +300,28 @@ export function Composer({
           aria-label="Message"
         />
 
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!canSend}
-          className="grid size-11 shrink-0 place-items-center rounded-full bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-500 disabled:bg-neutral-200 disabled:text-neutral-400"
-          aria-label="Send message"
-        >
-          <SendIcon className="size-5" />
-        </button>
+        {showMic ? (
+          <button
+            type="button"
+            onClick={() => void voice.start()}
+            disabled={voice.state === "starting"}
+            className="grid size-11 shrink-0 place-items-center rounded-full bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-60"
+            aria-label="Record voice message"
+            title="Record voice message"
+          >
+            <MicIcon className="size-5" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!canSend}
+            className="grid size-11 shrink-0 place-items-center rounded-full bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-500 disabled:bg-neutral-200 disabled:text-neutral-400"
+            aria-label="Send message"
+          >
+            <SendIcon className="size-5" />
+          </button>
+        )}
       </div>
     </div>
   );

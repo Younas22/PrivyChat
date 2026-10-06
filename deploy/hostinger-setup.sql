@@ -107,6 +107,10 @@ ALTER TABLE `MessageReaction` ADD CONSTRAINT `MessageReaction_messageId_fkey` FO
 -- AddForeignKey
 ALTER TABLE `MessageReaction` ADD CONSTRAINT `MessageReaction_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- Migration: 20261006200803_audio_messages
+-- AlterTable
+ALTER TABLE `Message` MODIFY `type` ENUM('text', 'image', 'video', 'document', 'audio') NOT NULL DEFAULT 'text';
+
 
 -- Prisma migration history
 CREATE TABLE IF NOT EXISTS `_prisma_migrations` (
@@ -122,7 +126,10 @@ CREATE TABLE IF NOT EXISTS `_prisma_migrations` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('a80fd6c6-45e5-45b6-ae80-59bdc71423d9', 'c0283a28a64265ea8f30ea850fd9a1026046ce23fb8050235c324b062223bc9e', NOW(3), '20261006083044_init', NULL, NULL, NOW(3), 1);
+VALUES ('030d70c8-d7bf-4f5d-a0b0-9dfb8e001c96', 'c0283a28a64265ea8f30ea850fd9a1026046ce23fb8050235c324b062223bc9e', NOW(3), '20261006083044_init', NULL, NULL, NOW(3), 1);
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('52bd329a-555b-48a3-a6b0-660d4993b2d5', '5a4c19e480ab573947fd9660492edf85aa917a443bd30335d172b6f33e9b8fb7', NOW(3), '20261006182934_message_reactions', NULL, NULL, NOW(3), 1);
+VALUES ('f4acc92a-39ae-4f99-b753-339d0d344356', '5a4c19e480ab573947fd9660492edf85aa917a443bd30335d172b6f33e9b8fb7', NOW(3), '20261006182934_message_reactions', NULL, NULL, NOW(3), 1);
+
+INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
+VALUES ('74f378e3-d3be-4f84-864f-b49f51176ba9', '6d66d9fd164ad8a9b79d4833cd9551480ccae6c90067ab89f95089bac295b21f', NOW(3), '20261006200803_audio_messages', NULL, NULL, NOW(3), 1);
