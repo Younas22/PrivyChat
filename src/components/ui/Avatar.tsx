@@ -16,7 +16,7 @@ function colorFor(id: string) {
   return COLORS[hash % COLORS.length];
 }
 
-/** "Younas" → "Y", "Ali Khan" → "AK" (Unicode/emoji safe). */
+/** "Alex" → "A", "Sam Lee" → "SL" (Unicode/emoji safe). */
 function initialsOf(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
   const letters = words.slice(0, 2).map((w) => Array.from(w)[0] ?? "");

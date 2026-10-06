@@ -44,7 +44,7 @@ export function JoinRoomForm({ roomCode, roomName, ownerName, defaultName }: Joi
               defaultValue={defaultName}
               autoComplete="nickname"
               autoFocus
-              placeholder="e.g. Ali"
+              placeholder="e.g. Sam"
               className="block min-h-12 w-full rounded-xl border-0 px-4 text-base text-neutral-950 ring-1 ring-inset ring-neutral-300 placeholder:text-neutral-400 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
             />
             {state?.error && (

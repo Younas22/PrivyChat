@@ -21,7 +21,7 @@ export function CreateRoomForm() {
           required
           maxLength={40}
           autoComplete="nickname"
-          placeholder="e.g. Younas"
+          placeholder="e.g. Alex"
           className="block min-h-12 w-full rounded-xl border-0 bg-white px-4 text-base text-neutral-950 ring-1 ring-inset ring-neutral-300 placeholder:text-neutral-400 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
         />
       </div>

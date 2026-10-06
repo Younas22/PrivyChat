@@ -585,7 +585,7 @@ function ChatRoomInner({
             maxLength={80}
             required
             autoFocus
-            placeholder="e.g. Ali & Younas"
+            placeholder="e.g. Alex & Sam"
             className="block min-h-12 w-full rounded-xl border-0 px-4 text-base text-neutral-950 ring-1 ring-inset ring-neutral-300 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
           />
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
