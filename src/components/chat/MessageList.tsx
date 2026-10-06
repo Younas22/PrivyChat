@@ -244,7 +244,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
 
               {pending.map((p) => (
                 <div key={p.tempId} className="mt-1 flex flex-col items-end pr-10">
-                  <div className="max-w-[calc(100vw-7.5rem)] rounded-2xl rounded-br-md bg-indigo-600 px-3 py-2 text-white opacity-80 shadow-sm sm:max-w-md lg:max-w-lg">
+                  <div className="max-w-[calc(100vw-7.5rem)] rounded-2xl rounded-br-md bg-(--bubble) px-3 py-2 text-(--bubble-fg) opacity-80 shadow-sm sm:max-w-md lg:max-w-lg">
                     {p.replyTo && (
                       <QuoteBlock
                         isMine

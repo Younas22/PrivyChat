@@ -36,14 +36,24 @@ export function QuoteBlock({
     <button
       type="button"
       onClick={onClick}
-      className={`mb-1.5 block w-full min-w-0 rounded-lg border-l-4 px-2.5 py-1.5 text-left text-xs transition ${
+      // Inside my bubble the quote is tinted from the bubble's text color, so it suits any chosen color.
+      style={
         isMine
-          ? "border-white/70 bg-white/15 text-indigo-50 hover:bg-white/25"
-          : "border-indigo-500 bg-white text-neutral-600 hover:bg-indigo-50"
+          ? {
+              color: "var(--bubble-fg)",
+              backgroundColor: "color-mix(in srgb, var(--bubble-fg) 14%, transparent)",
+              borderColor: "color-mix(in srgb, var(--bubble-fg) 60%, transparent)",
+            }
+          : undefined
+      }
+      className={`mb-1.5 block w-full min-w-0 rounded-lg border-l-4 px-2.5 py-1.5 text-left text-xs transition hover:opacity-90 ${
+        isMine ? "" : "border-indigo-500 bg-white text-neutral-600 hover:bg-indigo-50"
       }`}
     >
-      <span className={`block font-semibold ${isMine ? "text-white" : "text-indigo-700"}`}>{reply.senderName}</span>
-      <span className={`line-clamp-2 [overflow-wrap:anywhere] ${reply.isDeleted ? "italic" : ""}`}>{reply.preview}</span>
+      <span className={`block font-semibold ${isMine ? "" : "text-indigo-700"}`}>{reply.senderName}</span>
+      <span className={`line-clamp-2 [overflow-wrap:anywhere] ${isMine ? "opacity-80" : ""} ${reply.isDeleted ? "italic" : ""}`}>
+        {reply.preview}
+      </span>
     </button>
   );
 }
@@ -61,7 +71,7 @@ function Attachment({
       <button
         type="button"
         onClick={() => onImageClick(file.url, file.name)}
-        className="block w-full overflow-hidden rounded-xl bg-neutral-200"
+        className="block w-full overflow-hidden rounded-2xl bg-neutral-200"
         aria-label={`Open image ${file.name}`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- auth-protected, user-uploaded file */}
@@ -76,7 +86,7 @@ function Attachment({
         controls
         playsInline
         preload="metadata"
-        className="block max-h-80 w-full rounded-xl bg-black"
+        className="block max-h-80 w-full rounded-2xl bg-black"
       />
     );
   }
@@ -154,9 +164,11 @@ function MessageBubbleImpl({
   };
 
   const hasMedia = !message.isDeleted && (message.type === "image" || message.type === "video");
-  // Documents render as a plain file card with no colored bubble behind it.
+  // Photos, videos and documents sit directly on the chat (no bubble behind them).
   const isDoc = !message.isDeleted && message.type === "document";
-  const tinted = isMine && !isDoc;
+  const plain = isDoc || hasMedia;
+  // Only my text bubbles use my chosen color (CSS vars --bubble / --bubble-fg set by ChatRoom).
+  const tinted = isMine && !plain;
 
   const handleBubbleClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("a,button,video")) return;
@@ -210,12 +222,12 @@ function MessageBubbleImpl({
           className={`relative min-w-0 rounded-2xl transition ${
             hasMedia || isDoc ? "w-64 max-w-[calc(100vw-7.5rem)] sm:w-80" : "max-w-[calc(100vw-7.5rem)] sm:max-w-md lg:max-w-lg"
           } ${
-            isDoc
+            plain
               ? "text-neutral-900"
               : message.isDeleted
                 ? "bg-neutral-100 px-3 py-2 text-neutral-500 shadow-sm ring-1 ring-neutral-200"
                 : isMine
-                  ? "rounded-br-md bg-indigo-600 px-3 py-2 text-white shadow-sm"
+                  ? "rounded-br-md bg-(--bubble) px-3 py-2 text-(--bubble-fg) shadow-sm"
                   : "rounded-bl-md bg-neutral-100 px-3 py-2 text-neutral-900 shadow-sm"
           } ${highlighted ? "animate-flash" : ""}`}
         >
@@ -231,16 +243,17 @@ function MessageBubbleImpl({
               {message.content && (
                 <LinkifiedText
                   text={message.content}
-                  className={`text-[15px] leading-snug ${message.file ? "mt-2" : ""} ${isDoc ? "px-1" : ""}`}
+                  className={`text-[15px] leading-snug ${message.file ? "mt-2" : ""} ${plain ? "px-1" : ""}`}
                 />
               )}
             </>
           )}
 
           <span
+            style={tinted && !message.isDeleted ? { color: "var(--bubble-fg)", opacity: 0.7 } : undefined}
             className={`mt-1 block text-right text-[11px] leading-none ${
-              tinted && !message.isDeleted ? "text-indigo-200" : "text-neutral-400"
-            } ${isDoc ? "px-1" : ""}`}
+              tinted && !message.isDeleted ? "" : "text-neutral-400"
+            } ${plain ? "px-1" : ""}`}
           >
             {formatTime(message.createdAt)}
           </span>

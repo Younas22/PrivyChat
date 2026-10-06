@@ -2,9 +2,19 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BUBBLE_COLORS, type BubbleColorId } from "@/lib/client/bubbleColors";
 import type { RoomInfo, RoomMemberInfo, Viewer } from "@/lib/types";
 import { Avatar } from "@/components/ui/Avatar";
-import { ArchiveIcon, CopyIcon, MessageIcon, PencilIcon, ShareIcon, TrashIcon, UserMinusIcon } from "@/components/ui/icons";
+import {
+  ArchiveIcon,
+  CheckIcon,
+  CopyIcon,
+  MessageIcon,
+  PencilIcon,
+  ShareIcon,
+  TrashIcon,
+  UserMinusIcon,
+} from "@/components/ui/icons";
 
 export type ConnectionState = "connecting" | "live" | "polling";
 
@@ -13,6 +23,9 @@ interface RoomPanelProps {
   viewer: Viewer;
   connection: ConnectionState;
   canShare: boolean;
+  /** Color of the viewer's own message bubbles (their personal choice). */
+  bubbleColorId: BubbleColorId;
+  onBubbleColor: (id: BubbleColorId) => void;
   onCopyLink: () => void;
   onShare: () => void;
   onRename: () => void;
@@ -117,6 +130,33 @@ export function RoomPanel(props: RoomPanelProps) {
             </li>
           )}
         </ul>
+      </div>
+
+      <div>
+        <p className="mb-2 text-xs font-semibold tracking-wider text-neutral-500 uppercase">Chat color</p>
+        <div role="radiogroup" aria-label="Color of your messages" className="flex flex-wrap gap-2">
+          {BUBBLE_COLORS.map((c) => {
+            const selected = c.id === props.bubbleColorId;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                aria-label={c.name}
+                title={c.name}
+                onClick={() => props.onBubbleColor(c.id)}
+                style={{ backgroundColor: c.bg, color: c.fg }}
+                className={`grid size-9 place-items-center rounded-full ring-2 ring-offset-2 ring-offset-neutral-950 transition hover:scale-110 ${
+                  selected ? "ring-white" : "ring-transparent"
+                }`}
+              >
+                {selected && <CheckIcon className="size-4" />}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-xs text-neutral-500">Only changes how your messages look on your screen.</p>
       </div>
 
       {!saved && (

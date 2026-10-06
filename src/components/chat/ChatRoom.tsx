@@ -32,7 +32,8 @@ import {
   RefreshIcon,
   XIcon,
 } from "@/components/ui/icons";
-import { usePersistentFlag } from "@/lib/client/usePersistentFlag";
+import { bubbleColor, DEFAULT_BUBBLE_COLOR } from "@/lib/client/bubbleColors";
+import { usePersistentFlag, usePersistentValue } from "@/lib/client/usePersistentFlag";
 import { Composer, type UploadLimits } from "./Composer";
 import { Lightbox } from "./Lightbox";
 import { MessageList, type MessageListHandle, type PendingText, type PendingUpload } from "./MessageList";
@@ -271,6 +272,11 @@ function ChatRoomInner({
 
   // Desktop sidebar can be hidden; each person's choice is remembered in their browser.
   const [sidebarOpen, setSidebarOpen] = usePersistentFlag("talkroom:sidebar", true);
+
+  // Each person picks the color of their own message bubbles (kept in their browser).
+  const [bubbleColorId, setBubbleColorId] = usePersistentValue("talkroom:bubble", DEFAULT_BUBBLE_COLOR);
+  const myBubble = bubbleColor(bubbleColorId);
+  const bubbleVars = { "--bubble": myBubble.bg, "--bubble-fg": myBubble.fg } as React.CSSProperties;
 
   const [refreshing, setRefreshing] = useState(false);
   const refresh = async () => {
@@ -542,6 +548,11 @@ function ChatRoomInner({
     <RoomPanel
       room={room}
       viewer={viewer}
+      bubbleColorId={myBubble.id}
+      onBubbleColor={(id) => {
+        setBubbleColorId(id);
+        toast(`Chat color: ${bubbleColor(id).name}`, "success");
+      }}
       connection={connection}
       canShare={canShare}
       onCopyLink={copyLink}
@@ -591,7 +602,7 @@ function ChatRoomInner({
   };
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-white">
+    <div className="flex h-dvh overflow-hidden bg-white" style={bubbleVars}>
       {/* Desktop sidebar */}
       <aside className={`hidden w-80 shrink-0 flex-col bg-neutral-950 ${sidebarOpen ? "lg:flex" : ""}`}>
         <div className="flex items-center justify-between px-5 py-4">
