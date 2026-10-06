@@ -168,6 +168,19 @@ export async function deleteRoom(roomCode: string) {
   await publish(room, { type: "room:deleted" });
 }
 
+/**
+ * A member leaves on their own (emergency exit). Like being removed: they lose access and
+ * can't rejoin with the same link. The owner can't leave (they close or delete the room).
+ */
+export async function leaveRoom(roomCode: string) {
+  const { room, user, isOwner, membership } = await requireMember(roomCode);
+  if (isOwner) throw Errors.badRequest("As the owner, close or delete the room instead.");
+  await prisma.roomMember.update({ where: { id: membership.id }, data: { removedAt: new Date() } });
+  const fresh = await prisma.chatRoom.findUniqueOrThrow({ where: { id: room.id }, include: roomInclude });
+  // Announce on the channel the remaining member is subscribed to (it still includes the leaver).
+  await publish(room, { type: "member:removed", room: toRoomInfo(fresh), userId: user.id, left: true });
+}
+
 export async function removeMember(roomCode: string, memberId: string) {
   const { room, user } = await requireMember(roomCode, { ownerOnly: true });
   const target = await prisma.roomMember.findFirst({ where: { id: memberId, roomId: room.id, removedAt: null } });

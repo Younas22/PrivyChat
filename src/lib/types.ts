@@ -88,7 +88,8 @@ export type RoomEvent =
   | { type: "reaction:updated"; messageId: string; reactions: ReactionGroup[] }
   | { type: "room:updated"; room: RoomInfo }
   | { type: "member:joined"; room: RoomInfo; member: RoomMemberInfo }
-  | { type: "member:removed"; room: RoomInfo; userId: string }
+  /** `left`: the member left on their own (emergency exit) instead of being removed. */
+  | { type: "member:removed"; room: RoomInfo; userId: string; left?: boolean }
   | { type: "room:closed" }
   | { type: "room:deleted" }
   | { type: "typing"; userId: string; displayName: string; typing: boolean };

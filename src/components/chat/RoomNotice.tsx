@@ -22,8 +22,8 @@ const NOTICES: Record<NoticeKind, { title: string; text: string; icon: ReactNode
     icon: <AlertIcon className="size-7" />,
   },
   removed: {
-    title: "You were removed from this room.",
-    text: "The room owner removed you, so you can no longer read or send messages here.",
+    title: "You're no longer in this room.",
+    text: "You left this chat or the owner removed you, so you can no longer read or send messages here.",
     icon: <UserMinusIcon className="size-7" />,
   },
   deleted: {

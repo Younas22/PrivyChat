@@ -25,6 +25,7 @@ import {
   BellIcon,
   BellOffIcon,
   CopyIcon,
+  LogOutIcon,
   MenuIcon,
   MessageIcon,
   PanelLeftCloseIcon,
@@ -210,6 +211,10 @@ function ChatRoomInner({
           if (event.userId === viewer.userId) {
             setStatus("removed");
           } else {
+            if (event.left) {
+              const who = roomRef.current.members.find((m) => m.userId === event.userId)?.displayName ?? "Your friend";
+              toast(`${who} left the chat`, "info");
+            }
             setRoom(event.room);
           }
           break;
@@ -284,6 +289,22 @@ function ChatRoomInner({
   const [bubbleColorId, setBubbleColorId] = usePersistentValue("talkroom:bubble", DEFAULT_BUBBLE_COLOR);
   const myBubble = bubbleColor(bubbleColorId);
   const bubbleVars = { "--bubble": myBubble.bg, "--bubble-fg": myBubble.fg } as React.CSSProperties;
+
+  // ---------- close tab / emergency exit ----------
+
+  const [exiting, setExiting] = useState(false);
+  /** Hide the chat at once and close the tab; browsers only let scripts close tabs they opened,
+   * so otherwise replace this page with a neutral site (Back won't return to the chat). */
+  const closeTab = () => {
+    setExiting(true);
+    window.close();
+    setTimeout(() => window.location.replace("https://www.google.com"), 150);
+  };
+  /** Emergency exit (members only): leave the room for good, then close the tab. No confirmation. */
+  const emergencyExit = () => {
+    void fetch(`${base}/leave`, { method: "POST", keepalive: true }).catch(() => {});
+    closeTab();
+  };
 
   const [refreshing, setRefreshing] = useState(false);
   const refresh = async () => {
@@ -564,6 +585,7 @@ function ChatRoomInner({
   const onDelete = useCallback((m: ChatMessage) => setConfirm({ kind: "deleteMessage", message: m }), []);
   const onImageClick = useCallback((src: string, name: string) => setLightbox({ src, name }), []);
 
+  if (exiting) return <div className="h-dvh bg-white" aria-hidden="true" />;
   if (status !== "active") return <RoomNotice kind={status} />;
 
   const isAlone = room.members.length < 2;
@@ -585,6 +607,10 @@ function ChatRoomInner({
       connection={connection}
       canShare={canShare}
       onCopyLink={copyLink}
+      onRefresh={() => {
+        setSheetOpen(false);
+        void refresh();
+      }}
       onShare={shareLink}
       onRename={() => {
         setRenameValue(room.name);
@@ -691,7 +717,7 @@ function ChatRoomInner({
             type="button"
             onClick={refresh}
             disabled={refreshing}
-            className="grid size-10 shrink-0 place-items-center rounded-xl text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-50"
+            className="hidden size-10 shrink-0 place-items-center rounded-xl text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-50 sm:grid"
             aria-label="Refresh chat"
             title="Refresh"
           >
@@ -724,10 +750,31 @@ function ChatRoomInner({
             <button
               type="button"
               onClick={copyLink}
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-50"
+              className="hidden min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-50 sm:inline-flex"
             >
               <CopyIcon className="size-4" />
-              <span className="hidden sm:inline">Copy Link</span>
+              Copy Link
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={closeTab}
+            className="grid size-10 shrink-0 place-items-center rounded-xl text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-50"
+            aria-label="Close tab"
+            title="Close tab"
+          >
+            <XIcon className="size-5" />
+          </button>
+          {!viewer.isOwner && !isSaved && (
+            <button
+              type="button"
+              onClick={emergencyExit}
+              className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-red-600 px-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500 sm:px-3"
+              aria-label="Emergency exit: leave the chat and close the tab"
+              title="Emergency exit: leave the chat and close the tab"
+            >
+              <LogOutIcon className="size-5" />
+              <span className="hidden sm:inline">Exit</span>
             </button>
           )}
           <button

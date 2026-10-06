@@ -12,6 +12,7 @@ import {
   CopyIcon,
   MessageIcon,
   PencilIcon,
+  RefreshIcon,
   ShareIcon,
   TrashIcon,
   UserMinusIcon,
@@ -32,6 +33,7 @@ interface RoomPanelProps {
   bubbleColorId: BubbleColorId;
   onBubbleColor: (id: BubbleColorId) => void;
   onCopyLink: () => void;
+  onRefresh: () => void;
   onShare: () => void;
   onRename: () => void;
   onCloseRoom: () => void;
@@ -172,6 +174,12 @@ export function RoomPanel(props: RoomPanelProps) {
 
       {!saved && (
       <div className="space-y-1">
+        {/* On phones these two live here instead of the crowded header. */}
+        <div className="sm:hidden">
+          <PanelButton icon={<RefreshIcon />} onClick={props.onRefresh}>
+            Refresh chat
+          </PanelButton>
+        </div>
         <p className="mb-2 text-xs font-semibold tracking-wider text-neutral-500 uppercase">Invite</p>
         <PanelButton icon={<CopyIcon />} onClick={props.onCopyLink}>
           Copy Link
