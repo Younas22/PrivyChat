@@ -48,11 +48,9 @@ export function QuoteBlock({
 
 function Attachment({
   message,
-  isMine,
   onImageClick,
 }: {
   message: ChatMessage;
-  isMine: boolean;
   onImageClick: (src: string, name: string) => void;
 }) {
   const file = message.file!;
@@ -80,27 +78,22 @@ function Attachment({
       />
     );
   }
+  // Documents have no background of their own: icon, name and actions on the chat backdrop.
   return (
-    <div className={`flex items-center gap-3 rounded-xl p-2.5 ${isMine ? "bg-white/15" : "bg-white shadow-sm ring-1 ring-neutral-200"}`}>
-      <span
-        className={`grid size-11 shrink-0 place-items-center rounded-lg ${
-          isMine ? "bg-white text-indigo-600" : "bg-indigo-600 text-white"
-        }`}
-      >
-        <FileIcon className="size-5" />
-      </span>
+    <div className="flex items-center gap-3 py-1">
+      <FileIcon className="size-9 shrink-0 text-indigo-600" />
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-sm font-medium [overflow-wrap:anywhere]">{file.name}</p>
-        <p className={`text-xs ${isMine ? "text-indigo-100" : "text-neutral-500"}`}>
+        <p className="line-clamp-2 text-sm font-medium [overflow-wrap:anywhere] text-neutral-900">{file.name}</p>
+        <p className="text-xs text-neutral-500">
           {fileExtension(file.name)} · {formatBytes(file.size)}
         </p>
       </div>
-      <div className="flex shrink-0 gap-1">
+      <div className="flex shrink-0 gap-1 text-neutral-600">
         <a
           href={file.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`grid size-10 place-items-center rounded-lg ${isMine ? "hover:bg-white/20" : "hover:bg-neutral-100"}`}
+          className="grid size-10 place-items-center rounded-full hover:bg-neutral-100 hover:text-indigo-600"
           aria-label={`Open ${file.name}`}
           title="Open"
         >
@@ -109,7 +102,7 @@ function Attachment({
         <a
           href={`${file.url}?download=1`}
           download={file.name}
-          className={`grid size-10 place-items-center rounded-lg ${isMine ? "hover:bg-white/20" : "hover:bg-neutral-100"}`}
+          className="grid size-10 place-items-center rounded-full hover:bg-neutral-100 hover:text-indigo-600"
           aria-label={`Download ${file.name}`}
           title="Download"
         >
@@ -183,7 +176,7 @@ function MessageBubbleImpl({
             <p className="text-sm italic">This message was deleted</p>
           ) : (
             <>
-              {message.file && <Attachment message={message} isMine={tinted} onImageClick={onImageClick} />}
+              {message.file && <Attachment message={message} onImageClick={onImageClick} />}
               {message.content && (
                 <LinkifiedText
                   text={message.content}
