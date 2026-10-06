@@ -2,7 +2,8 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/lib/types";
-import { formatBytes, formatDay } from "@/lib/client/format";
+import { formatBytes } from "@/lib/client/format";
+import { formatDay } from "@/lib/client/time";
 import { AlertIcon, ArrowDownIcon, CopyIcon, FileIcon, MessageIcon, RefreshIcon, XIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Spinner } from "@/components/ui/Spinner";
@@ -42,6 +43,7 @@ interface MessageListProps {
   highlightedId: string | null;
   canAct: boolean;
   isAlone: boolean;
+  timeZone: string;
   /** The other member while they are typing, or null. */
   typingUser: { userId: string; displayName: string } | null;
   onLoadOlder: () => void;
@@ -192,7 +194,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             <div className="mt-auto">
               {messages.map((m, i) => {
                 const prev = messages[i - 1];
-                const newDay = !prev || formatDay(prev.createdAt) !== formatDay(m.createdAt);
+                const newDay = !prev || formatDay(prev.createdAt, props.timeZone) !== formatDay(m.createdAt, props.timeZone);
                 const isMine = m.senderId === viewerId;
                 const showSender = newDay || !prev || prev.senderId !== m.senderId;
                 return (
@@ -200,13 +202,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                     {newDay && (
                       <div className="my-4 flex justify-center">
                         <span className="rounded-full bg-neutral-100 px-3 py-1 text-[11px] font-medium text-neutral-500">
-                          {formatDay(m.createdAt)}
+                          {formatDay(m.createdAt, props.timeZone)}
                         </span>
                       </div>
                     )}
                     <MessageBubble
                       message={m}
                       viewerId={viewerId}
+                      timeZone={props.timeZone}
                       onReact={props.onReact}
                       isMine={isMine}
                       showSender={showSender}

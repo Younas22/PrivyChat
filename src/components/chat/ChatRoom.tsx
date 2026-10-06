@@ -40,6 +40,8 @@ import { MessageList, type MessageListHandle, type PendingText, type PendingUplo
 import { RoomNotice, type NoticeKind } from "./RoomNotice";
 import { ConnectionBadge, RoomPanel } from "./RoomPanel";
 import { useBell } from "./useBell";
+import { useTimeZone } from "./useTimeZone";
+import { formatDate } from "@/lib/client/time";
 import { useRoomEvents } from "./useRoomEvents";
 
 interface ChatRoomProps {
@@ -272,6 +274,9 @@ function ChatRoomInner({
 
   // Desktop sidebar can be hidden; each person's choice is remembered in their browser.
   const [sidebarOpen, setSidebarOpen] = usePersistentFlag("talkroom:sidebar", true);
+
+  // Each person picks the time zone their times are shown in (kept in their browser).
+  const tz = useTimeZone();
 
   // Each person picks the color of their own message bubbles (kept in their browser).
   const [bubbleColorId, setBubbleColorId] = usePersistentValue("talkroom:bubble", DEFAULT_BUBBLE_COLOR);
@@ -548,6 +553,12 @@ function ChatRoomInner({
     <RoomPanel
       room={room}
       viewer={viewer}
+      timeZonePreference={tz.preference}
+      detectedTimeZone={tz.detected}
+      onTimeZone={(zone) => {
+        tz.setPreference(zone);
+        toast(zone === "auto" ? "Time zone: automatic" : `Time zone: ${zone.replace(/_/g, " ")}`, "success");
+      }}
       bubbleColorId={myBubble.id}
       onBubbleColor={(id) => {
         setBubbleColorId(id);
@@ -722,6 +733,7 @@ function ChatRoomInner({
           highlightedId={highlightedId}
           canAct={!isSaved}
           isAlone={isAlone && !isSaved}
+          timeZone={tz.timeZone}
           typingUser={isSaved ? null : typingUser}
           onLoadOlder={loadOlder}
           onReply={onReply}
@@ -749,7 +761,7 @@ function ChatRoomInner({
 
         {isSaved ? (
           <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center text-sm text-neutral-600">
-            This room was saved{room.closedAt ? ` on ${new Date(room.closedAt).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" })}` : ""}. You can read it, but no new messages can be sent.
+            This room was saved{room.closedAt ? ` on ${formatDate(room.closedAt, tz.timeZone)}` : ""}. You can read it, but no new messages can be sent.
           </div>
         ) : (
         <Composer

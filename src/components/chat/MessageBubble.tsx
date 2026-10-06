@@ -2,7 +2,8 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import { REACTION_EMOJIS, type ChatMessage, type ReplyPreview } from "@/lib/types";
-import { fileExtension, formatBytes, formatTime } from "@/lib/client/format";
+import { fileExtension, formatBytes } from "@/lib/client/format";
+import { formatTime } from "@/lib/client/time";
 import { Avatar } from "@/components/ui/Avatar";
 import { DownloadIcon, ExternalIcon, FileIcon, ReplyIcon, SmileIcon, TrashIcon } from "@/components/ui/icons";
 import { LinkifiedText } from "./LinkifiedText";
@@ -10,6 +11,8 @@ import { LinkifiedText } from "./LinkifiedText";
 interface MessageBubbleProps {
   message: ChatMessage;
   viewerId: string;
+  /** IANA zone used for the timestamp (viewer's choice). */
+  timeZone: string;
   isMine: boolean;
   showSender: boolean;
   active: boolean;
@@ -128,6 +131,7 @@ function Attachment({
 function MessageBubbleImpl({
   message,
   viewerId,
+  timeZone,
   isMine,
   showSender,
   active,
@@ -169,6 +173,7 @@ function MessageBubbleImpl({
   const plain = isDoc || hasMedia;
   // Only my text bubbles use my chosen color (CSS vars --bubble / --bubble-fg set by ChatRoom).
   const tinted = isMine && !plain;
+  const hasReactions = message.reactions.length > 0 && !message.isDeleted;
 
   const handleBubbleClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("a,button,video")) return;
@@ -178,7 +183,7 @@ function MessageBubbleImpl({
   return (
     <div
       id={`msg-${message.id}`}
-      className={`group flex w-full scroll-mt-24 items-start gap-2 ${isMine ? "flex-row-reverse" : "flex-row"} ${showSender ? "mt-3" : "mt-1"}`}
+      className={`group flex w-full scroll-mt-24 items-start gap-2 ${isMine ? "flex-row-reverse" : "flex-row"} ${showSender || hasReactions ? "mt-4" : "mt-1"}`}
     >
       {/* Avatar on the first message of a group; same-width spacer keeps the rest aligned. */}
       {showSender ? (
@@ -231,6 +236,32 @@ function MessageBubbleImpl({
                   : "rounded-bl-md bg-neutral-100 px-3 py-2 text-neutral-900 shadow-sm"
           } ${highlighted ? "animate-flash" : ""}`}
         >
+          {/* Reactions as a corner badge: top-right on their messages, top-left on mine. */}
+          {hasReactions && (
+            <div className={`absolute -top-4 z-10 flex gap-1 ${isMine ? "-left-2" : "-right-2"}`}>
+              {message.reactions.map((r) => {
+                const mine = r.userIds.includes(viewerId);
+                return (
+                  <button
+                    key={r.emoji}
+                    type="button"
+                    disabled={!canAct}
+                    onClick={() => onReact(message.id, r.emoji)}
+                    aria-pressed={mine}
+                    aria-label={`${r.emoji} ${r.userIds.length}${mine ? ", including you. Tap to remove" : ""}`}
+                    title={mine ? "Tap to remove your reaction" : "Tap to react with this too"}
+                    className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-sm shadow-sm ring-1 transition enabled:hover:scale-105 ${
+                      mine ? "bg-indigo-50 ring-indigo-300" : "bg-white ring-neutral-200"
+                    }`}
+                  >
+                    <span>{r.emoji}</span>
+                    {r.userIds.length > 1 && <span className="text-xs font-medium text-neutral-600">{r.userIds.length}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {message.replyTo && !message.isDeleted && (
             <QuoteBlock reply={message.replyTo} isMine={tinted} onClick={() => onQuoteClick(message.replyTo!.id)} />
           )}
@@ -255,7 +286,7 @@ function MessageBubbleImpl({
               tinted && !message.isDeleted ? "" : "text-neutral-400"
             } ${plain ? "px-1" : ""}`}
           >
-            {formatTime(message.createdAt)}
+            {formatTime(message.createdAt, timeZone)}
           </span>
         </div>
 
@@ -301,30 +332,6 @@ function MessageBubbleImpl({
         )}
       </div>
 
-      {message.reactions.length > 0 && !message.isDeleted && (
-        <div className={`relative z-10 -mt-1.5 flex flex-wrap gap-1 ${isMine ? "justify-end pr-2" : "pl-2"}`}>
-          {message.reactions.map((r) => {
-            const mine = r.userIds.includes(viewerId);
-            return (
-              <button
-                key={r.emoji}
-                type="button"
-                disabled={!canAct}
-                onClick={() => onReact(message.id, r.emoji)}
-                aria-pressed={mine}
-                aria-label={`${r.emoji} ${r.userIds.length}${mine ? ", including you. Tap to remove" : ""}`}
-                title={mine ? "Tap to remove your reaction" : "Tap to react with this too"}
-                className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-sm shadow-sm ring-1 transition enabled:hover:scale-105 ${
-                  mine ? "bg-indigo-50 ring-indigo-300" : "bg-white ring-neutral-200"
-                }`}
-              >
-                <span>{r.emoji}</span>
-                {r.userIds.length > 1 && <span className="text-xs font-medium text-neutral-600">{r.userIds.length}</span>}
-              </button>
-            );
-          })}
-        </div>
-      )}
       </div>
     </div>
   );

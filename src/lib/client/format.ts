@@ -10,25 +10,6 @@ export function formatBytes(bytes: number) {
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
 }
 
-export function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
-export function formatDay(iso: string) {
-  const date = new Date(iso);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === today.toDateString()) return "Today";
-  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return date.toLocaleDateString([], {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
-  });
-}
-
 export function fileExtension(name: string) {
   const m = /\.([A-Za-z0-9]{1,8})$/.exec(name);
   return m ? m[1].toUpperCase() : "FILE";
