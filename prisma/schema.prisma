@@ -76,6 +76,10 @@ model Message {
   fileUrl          String?     @db.VarChar(512)
   fileMimeType     String?     @db.VarChar(127)
   fileSize         Int?
+  /// Audio only: exact length in milliseconds, measured when recorded/sent.
+  fileDuration     Int?
+  /// Audio only: loudness bars for the waveform (one base-32 digit per bar).
+  waveform         String?     @db.VarChar(64)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   deletedAt        DateTime?

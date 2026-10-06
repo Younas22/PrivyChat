@@ -16,6 +16,19 @@ export interface FileInfo {
   url: string;
   mimeType: string;
   size: number;
+  /** Audio only: exact length in ms (null for older messages). */
+  durationMs: number | null;
+  /** Audio only: loudness bars, one base-32 digit (0-v) per bar. */
+  waveform: string | null;
+}
+
+/** Validates client-measured audio details (cosmetic, so bad values are simply dropped). */
+export function parseAudioMeta(durationMs: unknown, waveform: unknown) {
+  const ms = Number(durationMs);
+  return {
+    durationMs: Number.isInteger(ms) && ms > 0 && ms <= 60 * 60 * 1000 ? ms : null,
+    waveform: typeof waveform === "string" && /^[0-9a-v]{8,64}$/.test(waveform) ? waveform : null,
+  };
 }
 
 export interface ReplyPreview {

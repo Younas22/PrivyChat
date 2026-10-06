@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { PauseIcon, PlayIcon } from "@/components/ui/icons";
+import { WAVE_BARS } from "@/lib/client/audioAnalysis";
 
 const PLAY_EVENT = "talkroom:audio-play";
 const noopSubscribe = () => () => {};
@@ -12,23 +13,47 @@ function formatDuration(seconds: number | null) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-/**
- * Compact voice-note player: play/pause, seek bar and time.
- * `tinted` = inside my colored bubble (uses the bubble's text color).
- */
-export function VoicePlayer({ src, tinted }: { src: string; tinted: boolean }) {
+/** Bar heights 0-1 from the stored waveform, or a gentle placeholder for older messages. */
+function barLevels(waveform: string | null, seed: string) {
+  if (waveform) return [...waveform].map((c) => parseInt(c, 32) / 31);
+  let h = 0;
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return Array.from({ length: WAVE_BARS }, () => {
+    h = (h * 1103515245 + 12345) >>> 0;
+    return 0.25 + ((h >>> 16) % 1000) / 2000; // 0.25-0.75
+  });
+}
+
+interface VoicePlayerProps {
+  src: string;
+  /** Inside my colored bubble: draw with the bubble's text color. */
+  tinted: boolean;
+  /** Exact length measured when it was sent (null for older messages). */
+  durationMs: number | null;
+  waveform: string | null;
+}
+
+/** WhatsApp-style voice note: play/pause, loudness waveform you can tap or drag to seek, exact time. */
+export function VoicePlayer({ src, tinted, durationMs, waveform }: VoicePlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const barsRef = useRef<HTMLDivElement>(null);
   const fixingDuration = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
-  const [duration, setDuration] = useState<number | null>(null);
-  // Attach the source only after hydration: otherwise a server-rendered <audio> can load its
-  // metadata before React listens, and the duration event is missed (shows 0:00).
+  const [metaDuration, setMetaDuration] = useState<number | null>(null);
+  // Attach the source only after hydration so a server-rendered <audio> can't fire its
+  // metadata events before React is listening.
   const hydrated = useSyncExternalStore(
     noopSubscribe,
     () => true,
     () => false,
   );
+
+  const levels = useMemo(() => barLevels(waveform, src), [waveform, src]);
+  // Prefer the exact stored length; fall back to what the file reports.
+  const duration = durationMs ? durationMs / 1000 : metaDuration;
+  const progress = duration ? Math.min(1, current / duration) : 0;
+  const started = playing || current > 0;
 
   // Only one voice note plays at a time.
   useEffect(() => {
@@ -43,11 +68,9 @@ export function VoicePlayer({ src, tinted }: { src: string; tinted: boolean }) {
   const onLoadedMetadata = () => {
     const a = audioRef.current;
     if (!a) return;
-    if (Number.isFinite(a.duration)) {
-      setDuration(a.duration);
-    } else {
-      // Browser recordings (WebM) often report an unknown length until read once: seek far
-      // ahead to make the browser compute it, then come back to the start.
+    if (Number.isFinite(a.duration)) setMetaDuration(a.duration);
+    else if (!durationMs) {
+      // Browser recordings (WebM) may not know their length until read once.
       fixingDuration.current = true;
       a.currentTime = 1e101;
     }
@@ -56,7 +79,7 @@ export function VoicePlayer({ src, tinted }: { src: string; tinted: boolean }) {
   const onDurationChange = () => {
     const a = audioRef.current;
     if (!a || !Number.isFinite(a.duration)) return;
-    setDuration(a.duration);
+    setMetaDuration(a.duration);
     if (fixingDuration.current) {
       fixingDuration.current = false;
       a.currentTime = 0;
@@ -74,15 +97,24 @@ export function VoicePlayer({ src, tinted }: { src: string; tinted: boolean }) {
     }
   };
 
-  const seek = (value: number) => {
+  const seekTo = (seconds: number) => {
     const a = audioRef.current;
-    if (!a) return;
-    a.currentTime = value;
-    setCurrent(value);
+    if (!a || !duration) return;
+    const t = Math.max(0, Math.min(duration, seconds));
+    a.currentTime = t;
+    setCurrent(t);
   };
 
+  const seekFromPointer = (clientX: number) => {
+    const rect = barsRef.current?.getBoundingClientRect();
+    if (!rect || !duration) return;
+    seekTo(((clientX - rect.left) / rect.width) * duration);
+  };
+
+  const fg = tinted ? "var(--bubble-fg)" : "#4f46e5";
+
   return (
-    <div className="flex w-56 max-w-full items-center gap-3 py-0.5 sm:w-64">
+    <div className="flex w-60 max-w-full items-center gap-3 py-0.5 sm:w-72">
       <audio
         ref={audioRef}
         src={hydrated ? src : undefined}
@@ -109,24 +141,54 @@ export function VoicePlayer({ src, tinted }: { src: string; tinted: boolean }) {
       >
         {playing ? <PauseIcon className="size-4" /> : <PlayIcon className="size-4 translate-x-px" />}
       </button>
+
       <div className="min-w-0 flex-1">
-        <input
-          type="range"
-          min={0}
-          max={duration ?? 0}
-          step={0.01}
-          value={Math.min(current, duration ?? 0)}
-          onChange={(e) => seek(Number(e.target.value))}
-          disabled={!duration}
-          aria-label="Seek voice message"
-          style={{ accentColor: tinted ? "var(--bubble-fg)" : "#4f46e5" }}
-          className="block h-1.5 w-full cursor-pointer disabled:cursor-default"
-        />
+        {/* Waveform: taller bars = louder. Played part is solid; tap or drag to seek. */}
+        <div
+          ref={barsRef}
+          role="slider"
+          tabIndex={0}
+          aria-label="Voice message position"
+          aria-valuemin={0}
+          aria-valuemax={Math.round(duration ?? 0)}
+          aria-valuenow={Math.round(current)}
+          aria-valuetext={`${formatDuration(current)} of ${formatDuration(duration)}`}
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            seekFromPointer(e.clientX);
+          }}
+          onPointerMove={(e) => {
+            if (e.currentTarget.hasPointerCapture(e.pointerId)) seekFromPointer(e.clientX);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowRight") seekTo(current + 5);
+            else if (e.key === "ArrowLeft") seekTo(current - 5);
+            else return;
+            e.preventDefault();
+          }}
+          className="flex h-8 cursor-pointer touch-none items-center gap-[2px] rounded focus-visible:outline-2 focus-visible:outline-offset-2"
+          style={{ outlineColor: fg }}
+        >
+          {levels.map((level, i) => {
+            const played = (i + 0.5) / levels.length <= progress;
+            return (
+              <span
+                key={i}
+                className="min-w-[2px] flex-1 rounded-full transition-opacity"
+                style={{
+                  height: `${Math.max(12, Math.round(level * 100))}%`,
+                  backgroundColor: fg,
+                  opacity: played ? 1 : 0.35,
+                }}
+              />
+            );
+          })}
+        </div>
         <span
           style={tinted ? { color: "var(--bubble-fg)", opacity: 0.75 } : undefined}
-          className={`mt-1 block text-[11px] tabular-nums ${tinted ? "" : "text-neutral-500"}`}
+          className={`mt-0.5 block text-[11px] tabular-nums ${tinted ? "" : "text-neutral-500"}`}
         >
-          {playing || current > 0 ? formatDuration(current) : formatDuration(duration)}
+          {started ? `${formatDuration(current)} / ${formatDuration(duration)}` : formatDuration(duration)}
         </span>
       </div>
     </div>

@@ -42,7 +42,14 @@ export function toChatMessage(m: MessageWithRelations): ChatMessage {
     isDeleted,
     file:
       !isDeleted && m.fileUrl && m.fileName && m.fileMimeType
-        ? { name: m.fileName, url: m.fileUrl, mimeType: m.fileMimeType, size: m.fileSize ?? 0 }
+        ? {
+            name: m.fileName,
+            url: m.fileUrl,
+            mimeType: m.fileMimeType,
+            size: m.fileSize ?? 0,
+            durationMs: m.fileDuration,
+            waveform: m.waveform,
+          }
         : null,
     reactions: isDeleted ? [] : groupReactions(m.reactions),
     replyTo: r

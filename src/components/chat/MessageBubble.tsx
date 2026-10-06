@@ -72,7 +72,9 @@ function Attachment({
   onImageClick: (src: string, name: string) => void;
 }) {
   const file = message.file!;
-  if (message.type === "audio") return <VoicePlayer src={file.url} tinted={tinted} />;
+  if (message.type === "audio") {
+    return <VoicePlayer src={file.url} tinted={tinted} durationMs={file.durationMs} waveform={file.waveform} />;
+  }
   if (message.type === "image") {
     return (
       <button

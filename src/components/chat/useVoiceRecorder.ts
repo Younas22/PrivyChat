@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { analyzeAudio, type AudioMeta } from "@/lib/client/audioAnalysis";
 
 const MAX_SECONDS = 300; // 5 minutes
 const MIN_MS = 700; // shorter taps are discarded
@@ -37,7 +38,7 @@ export function useVoiceRecorder({
   onComplete,
   onError,
 }: {
-  onComplete: (file: File) => void;
+  onComplete: (file: File, meta: AudioMeta) => void;
   onError: (message: string) => void;
 }) {
   const [state, setState] = useState<State>("idle");
@@ -113,7 +114,11 @@ export function useVoiceRecorder({
         return;
       }
       const { ext, type } = fileFor(blob.type);
-      callbacks.current.onComplete(new File([blob], `voice-${Date.now()}.${ext}`, { type }));
+      const file = new File([blob], `voice-${Date.now()}.${ext}`, { type });
+      // Exact length + loudness bars, measured now so every device shows them correctly.
+      void analyzeAudio(blob).then((meta) =>
+        callbacks.current.onComplete(file, meta ?? { durationMs: tookMs, waveform: null }),
+      );
     };
 
     recorderRef.current = rec;

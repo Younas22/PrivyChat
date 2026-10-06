@@ -4,6 +4,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffec
 import type { ChatMessage } from "@/lib/types";
 import { formatBytes } from "@/lib/client/format";
 import { formatDay } from "@/lib/client/time";
+import type { AudioMeta } from "@/lib/client/audioAnalysis";
 import { AlertIcon, ArrowDownIcon, CopyIcon, FileIcon, MessageIcon, RefreshIcon, XIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Spinner } from "@/components/ui/Spinner";
@@ -25,6 +26,8 @@ export interface PendingUpload {
   progress: number;
   status: "uploading" | "failed";
   error?: string;
+  /** Voice notes: exact length + loudness bars measured when recorded. */
+  audioMeta?: AudioMeta | null;
 }
 
 export interface MessageListHandle {

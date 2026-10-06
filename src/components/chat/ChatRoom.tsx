@@ -42,6 +42,8 @@ import { ConnectionBadge, RoomPanel } from "./RoomPanel";
 import { useBell } from "./useBell";
 import { useTimeZone } from "./useTimeZone";
 import { formatDate } from "@/lib/client/time";
+import { analyzeAudio, type AudioMeta } from "@/lib/client/audioAnalysis";
+import { categoryOf } from "@/lib/client/format";
 import { useRoomEvents } from "./useRoomEvents";
 
 interface ChatRoomProps {
@@ -396,6 +398,9 @@ function ChatRoomInner({
       const onProgress = (progress: number) =>
         setUploads((u) => u.map((x) => (x.tempId === item.tempId ? { ...x, progress } : x)));
       try {
+        // Audio files picked with 📎 are measured here; recordings arrive already measured.
+        const audioMeta =
+          item.audioMeta ?? (categoryOf(item.file.name) === "audio" ? await analyzeAudio(item.file) : null);
         let message: ChatMessage;
         if (directUploads) {
           ({ message } = await directUpload({
@@ -405,6 +410,7 @@ function ChatRoomInner({
             file: item.file,
             caption: item.caption,
             replyToMessageId: item.replyTo?.id ?? null,
+            audioMeta,
             onProgress,
           }));
         } else {
@@ -412,6 +418,10 @@ function ChatRoomInner({
           form.append("file", item.file);
           if (item.caption) form.append("caption", item.caption);
           if (item.replyTo) form.append("replyToMessageId", item.replyTo.id);
+          if (audioMeta) {
+            form.append("durationMs", String(audioMeta.durationMs));
+            if (audioMeta.waveform) form.append("waveform", audioMeta.waveform);
+          }
           ({ message } = await uploadWithProgress<{ message: ChatMessage }>(`${base}/upload`, form, onProgress));
         }
         setUploads((u) => u.filter((x) => x.tempId !== item.tempId));
@@ -426,9 +436,17 @@ function ChatRoomInner({
     [base, handleFatal, toast, directUploads],
   );
 
-  const onSendFile = (file: File, caption: string) => {
+  const onSendFile = (file: File, caption: string, audioMeta?: AudioMeta) => {
     stopTyping();
-    const item: PendingUpload = { tempId: tempId(), file, caption, replyTo, progress: 0, status: "uploading" };
+    const item: PendingUpload = {
+      tempId: tempId(),
+      file,
+      caption,
+      replyTo,
+      progress: 0,
+      status: "uploading",
+      audioMeta,
+    };
     setUploads((u) => [...u, item]);
     setReplyTo(null);
     void sendFile(item);

@@ -18,6 +18,8 @@ export async function directUpload(opts: {
   file: File;
   caption: string;
   replyToMessageId: string | null;
+  /** Audio only: exact length + loudness bars. */
+  audioMeta?: { durationMs: number; waveform: string | null } | null;
   onProgress: (fraction: number) => void;
 }): Promise<{ message: ChatMessage }> {
   const { base, roomId, file } = opts;
@@ -39,6 +41,13 @@ export async function directUpload(opts: {
   }
   return api(`${base}/upload/complete`, {
     method: "POST",
-    json: { key, name: file.name, caption: opts.caption, replyToMessageId: opts.replyToMessageId },
+    json: {
+      key,
+      name: file.name,
+      caption: opts.caption,
+      replyToMessageId: opts.replyToMessageId,
+      durationMs: opts.audioMeta?.durationMs,
+      waveform: opts.audioMeta?.waveform ?? undefined,
+    },
   });
 }

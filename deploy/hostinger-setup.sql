@@ -111,6 +111,11 @@ ALTER TABLE `MessageReaction` ADD CONSTRAINT `MessageReaction_userId_fkey` FOREI
 -- AlterTable
 ALTER TABLE `Message` MODIFY `type` ENUM('text', 'image', 'video', 'document', 'audio') NOT NULL DEFAULT 'text';
 
+-- Migration: 20261006203645_audio_waveform
+-- AlterTable
+ALTER TABLE `Message` ADD COLUMN `fileDuration` INTEGER NULL,
+    ADD COLUMN `waveform` VARCHAR(64) NULL;
+
 
 -- Prisma migration history
 CREATE TABLE IF NOT EXISTS `_prisma_migrations` (
@@ -126,10 +131,13 @@ CREATE TABLE IF NOT EXISTS `_prisma_migrations` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('030d70c8-d7bf-4f5d-a0b0-9dfb8e001c96', 'c0283a28a64265ea8f30ea850fd9a1026046ce23fb8050235c324b062223bc9e', NOW(3), '20261006083044_init', NULL, NULL, NOW(3), 1);
+VALUES ('13c1cd3d-a391-4b86-ab9d-b4aabe0c9117', 'c0283a28a64265ea8f30ea850fd9a1026046ce23fb8050235c324b062223bc9e', NOW(3), '20261006083044_init', NULL, NULL, NOW(3), 1);
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('f4acc92a-39ae-4f99-b753-339d0d344356', '5a4c19e480ab573947fd9660492edf85aa917a443bd30335d172b6f33e9b8fb7', NOW(3), '20261006182934_message_reactions', NULL, NULL, NOW(3), 1);
+VALUES ('600a33e8-bfe9-44f1-8c2f-55c69f9e8605', '5a4c19e480ab573947fd9660492edf85aa917a443bd30335d172b6f33e9b8fb7', NOW(3), '20261006182934_message_reactions', NULL, NULL, NOW(3), 1);
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('74f378e3-d3be-4f84-864f-b49f51176ba9', '6d66d9fd164ad8a9b79d4833cd9551480ccae6c90067ab89f95089bac295b21f', NOW(3), '20261006200803_audio_messages', NULL, NULL, NOW(3), 1);
+VALUES ('6f435715-e690-45c5-899b-27c895c3e9e5', '6d66d9fd164ad8a9b79d4833cd9551480ccae6c90067ab89f95089bac295b21f', NOW(3), '20261006200803_audio_messages', NULL, NULL, NOW(3), 1);
+
+INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
+VALUES ('7550d78f-daae-4ee0-aeb6-acf8cf8551a9', '9b926fe357523ca990395f6f7e1577f1ba22fe11261f51dd136658d050893a2f', NOW(3), '20261006203645_audio_waveform', NULL, NULL, NOW(3), 1);

@@ -5,6 +5,7 @@ import { errorResponse, Errors } from "@/lib/server/errors";
 import { createMessage, fileUrlForKey, requireMember } from "@/lib/server/rooms";
 import { planUpload, SNIFF_BYTES, STORED_NAME_PATTERN, verifyContent } from "@/lib/server/uploads";
 import { getStorage } from "@/lib/storage";
+import { parseAudioMeta } from "@/lib/types";
 import { idSchema } from "@/lib/validation";
 
 const bodySchema = z.object({
@@ -12,6 +13,8 @@ const bodySchema = z.object({
   name: z.string().min(1).max(500),
   caption: z.string().max(4000).optional(),
   replyToMessageId: idSchema.nullish(),
+  durationMs: z.number().optional(),
+  waveform: z.string().max(64).optional(),
 });
 
 /**
@@ -52,7 +55,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ roomCod
       room,
       content: caption || null,
       replyToMessageId,
-      file: { type: plan.category, name: plan.safeName, url, mimeType, size },
+      file: {
+        type: plan.category,
+        name: plan.safeName,
+        url,
+        mimeType,
+        size,
+        ...parseAudioMeta(parsed.data.durationMs, parsed.data.waveform),
+      },
     });
     return NextResponse.json({ message }, { status: 201 });
   } catch (err) {

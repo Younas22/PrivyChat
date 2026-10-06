@@ -216,7 +216,15 @@ interface NewMessageInput {
   room: RoomRef;
   content: string | null;
   replyToMessageId?: string | null;
-  file?: { type: "image" | "video" | "document" | "audio"; name: string; url: string; mimeType: string; size: number };
+  file?: {
+    type: "image" | "video" | "document" | "audio";
+    name: string;
+    url: string;
+    mimeType: string;
+    size: number;
+    durationMs?: number | null;
+    waveform?: string | null;
+  };
 }
 
 export async function createMessage(input: NewMessageInput): Promise<ChatMessage> {
@@ -232,6 +240,8 @@ export async function createMessage(input: NewMessageInput): Promise<ChatMessage
       fileUrl: input.file?.url,
       fileMimeType: input.file?.mimeType,
       fileSize: input.file?.size,
+      fileDuration: input.file?.type === "audio" ? (input.file.durationMs ?? null) : null,
+      waveform: input.file?.type === "audio" ? (input.file.waveform ?? null) : null,
     },
     include: messageInclude,
   });
@@ -254,7 +264,16 @@ export async function deleteMessage(roomCode: string, messageId: string) {
   await prisma.$transaction([
     prisma.message.update({
       where: { id: message.id },
-      data: { deletedAt: new Date(), content: null, fileUrl: null, fileName: null, fileMimeType: null, fileSize: null },
+      data: {
+        deletedAt: new Date(),
+        content: null,
+        fileUrl: null,
+        fileName: null,
+        fileMimeType: null,
+        fileSize: null,
+        fileDuration: null,
+        waveform: null,
+      },
     }),
     prisma.messageReaction.deleteMany({ where: { messageId: message.id } }),
   ]);

@@ -4,6 +4,7 @@ import { rateLimit } from "@/lib/server/rate-limit";
 import { createMessage, fileUrlForKey, requireMember } from "@/lib/server/rooms";
 import { maxUploadBytes, planUpload, randomStoredName, verifyContent } from "@/lib/server/uploads";
 import { getStorage } from "@/lib/storage";
+import { parseAudioMeta } from "@/lib/types";
 import { idSchema } from "@/lib/validation";
 
 export async function POST(req: Request, { params }: { params: Promise<{ roomCode: string }> }) {
@@ -48,6 +49,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ roomCod
         name: plan.safeName,
         url: fileUrlForKey(storedKey),
         mimeType,
+        ...parseAudioMeta(form?.get("durationMs"), form?.get("waveform")),
         size: data.length,
       },
     });

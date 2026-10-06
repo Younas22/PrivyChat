@@ -6,6 +6,7 @@ import type { ChatMessage } from "@/lib/types";
 import { ACCEPT_ATTR, categoryOf, formatBytes } from "@/lib/client/format";
 import { FileIcon, MicIcon, PaperclipIcon, ReplyIcon, SendIcon, SmileIcon, TrashIcon, XIcon } from "@/components/ui/icons";
 import { useVoiceRecorder } from "./useVoiceRecorder";
+import type { AudioMeta } from "@/lib/client/audioAnalysis";
 import { Spinner } from "@/components/ui/Spinner";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
@@ -27,7 +28,7 @@ interface ComposerProps {
   onSendText: (content: string) => void;
   /** Called on every keystroke in the message box (drives the "typing…" hint). */
   onTyping?: () => void;
-  onSendFile: (file: File, caption: string) => void;
+  onSendFile: (file: File, caption: string, audioMeta?: AudioMeta) => void;
   onError: (message: string) => void;
 }
 
@@ -138,7 +139,7 @@ export function Composer({
 
   // Voice notes: the mic takes the send button's place while there's nothing to send.
   const voice = useVoiceRecorder({
-    onComplete: (recorded) => onSendFile(recorded, ""),
+    onComplete: (recorded, meta) => onSendFile(recorded, "", meta),
     onError,
   });
   const showMic = voice.supported && !disabled && !file && text.trim().length === 0;
