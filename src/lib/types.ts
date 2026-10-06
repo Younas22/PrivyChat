@@ -2,6 +2,15 @@
 
 export type MessageType = "text" | "image" | "video" | "document";
 
+/** Quick reactions offered on every message (validated server-side). */
+export const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
+
+/** One emoji and everyone who reacted with it, in the order reactions were first added. */
+export interface ReactionGroup {
+  emoji: string;
+  userIds: string[];
+}
+
 export interface FileInfo {
   name: string;
   url: string;
@@ -27,6 +36,7 @@ export interface ChatMessage {
   isDeleted: boolean;
   file: FileInfo | null;
   replyTo: ReplyPreview | null;
+  reactions: ReactionGroup[];
 }
 
 export interface RoomMemberInfo {
@@ -62,6 +72,7 @@ export type RealtimeConfig = { provider: "pusher"; key: string; cluster: string 
 export type RoomEvent =
   | { type: "message:new"; message: ChatMessage }
   | { type: "message:deleted"; messageId: string }
+  | { type: "reaction:updated"; messageId: string; reactions: ReactionGroup[] }
   | { type: "room:updated"; room: RoomInfo }
   | { type: "member:joined"; room: RoomInfo; member: RoomMemberInfo }
   | { type: "member:removed"; room: RoomInfo; userId: string }

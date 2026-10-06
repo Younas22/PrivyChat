@@ -1,10 +1,11 @@
 import "server-only";
-import type { ChatMessage, RoomInfo, RoomMemberInfo } from "@/lib/types";
+import type { ChatMessage, ReactionGroup, RoomInfo, RoomMemberInfo } from "@/lib/types";
 import type { Prisma } from "@/generated/prisma/client";
 import { roomChannel } from "./realtime";
 
 export const messageInclude = {
   sender: { select: { id: true, displayName: true } },
+  reactions: { select: { emoji: true, userId: true }, orderBy: { createdAt: "asc" } },
   replyTo: {
     select: {
       id: true,
@@ -21,6 +22,13 @@ type MessageWithRelations = Prisma.MessageGetPayload<{ include: typeof messageIn
 
 const TYPE_LABEL = { image: "Photo", video: "Video", document: "Document", text: "Message" } as const;
 
+/** Groups reaction rows by emoji, keeping the order each emoji was first used. */
+export function groupReactions(rows: { emoji: string; userId: string }[]): ReactionGroup[] {
+  const groups = new Map<string, string[]>();
+  for (const r of rows) groups.set(r.emoji, [...(groups.get(r.emoji) ?? []), r.userId]);
+  return [...groups].map(([emoji, userIds]) => ({ emoji, userIds }));
+}
+
 export function toChatMessage(m: MessageWithRelations): ChatMessage {
   const isDeleted = m.deletedAt !== null;
   const r = m.replyTo;
@@ -36,6 +44,7 @@ export function toChatMessage(m: MessageWithRelations): ChatMessage {
       !isDeleted && m.fileUrl && m.fileName && m.fileMimeType
         ? { name: m.fileName, url: m.fileUrl, mimeType: m.fileMimeType, size: m.fileSize ?? 0 }
         : null,
+    reactions: isDeleted ? [] : groupReactions(m.reactions),
     replyTo: r
       ? {
           id: r.id,

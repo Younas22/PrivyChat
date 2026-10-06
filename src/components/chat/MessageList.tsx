@@ -47,6 +47,7 @@ interface MessageListProps {
   onLoadOlder: () => void;
   onReply: (m: ChatMessage) => void;
   onDelete: (m: ChatMessage) => void;
+  onReact: (messageId: string, emoji: string) => void;
   onQuoteClick: (id: string) => void;
   onImageClick: (src: string, name: string) => void;
   onRetryText: (tempId: string) => void;
@@ -205,6 +206,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                     )}
                     <MessageBubble
                       message={m}
+                      viewerId={viewerId}
+                      onReact={props.onReact}
                       isMine={isMine}
                       showSender={showSender}
                       active={activeId === m.id}

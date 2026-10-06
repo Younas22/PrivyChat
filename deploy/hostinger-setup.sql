@@ -1,7 +1,9 @@
--- TalkRoom: one-time database setup for Hostinger (import in phpMyAdmin).
--- Creates all tables and marks the Prisma migration "20261006083044_init" as applied,
--- so future `npx prisma migrate deploy` runs continue from here.
+-- TalkRoom: one-time database setup for a NEW Hostinger database (import in phpMyAdmin).
+-- Creates all tables and marks every Prisma migration as applied, so future
+-- `npx prisma migrate deploy` runs continue from here.
+-- (An existing database should be upgraded with `npx prisma migrate deploy` instead.)
 
+-- Migration: 20261006083044_init
 -- CreateTable
 CREATE TABLE `User` (
     `id` VARCHAR(191) NOT NULL,
@@ -85,6 +87,26 @@ ALTER TABLE `Message` ADD CONSTRAINT `Message_senderId_fkey` FOREIGN KEY (`sende
 -- AddForeignKey
 ALTER TABLE `Message` ADD CONSTRAINT `Message_replyToMessageId_fkey` FOREIGN KEY (`replyToMessageId`) REFERENCES `Message`(`id`) ON DELETE SET NULL ON UPDATE NO ACTION;
 
+-- Migration: 20261006182934_message_reactions
+-- CreateTable
+CREATE TABLE `MessageReaction` (
+    `id` VARCHAR(191) NOT NULL,
+    `messageId` VARCHAR(191) NOT NULL,
+    `userId` VARCHAR(191) NOT NULL,
+    `emoji` VARCHAR(16) NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    INDEX `MessageReaction_userId_idx`(`userId`),
+    UNIQUE INDEX `MessageReaction_messageId_userId_key`(`messageId`, `userId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `MessageReaction` ADD CONSTRAINT `MessageReaction_messageId_fkey` FOREIGN KEY (`messageId`) REFERENCES `Message`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `MessageReaction` ADD CONSTRAINT `MessageReaction_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
 
 -- Prisma migration history
 CREATE TABLE IF NOT EXISTS `_prisma_migrations` (
@@ -100,4 +122,7 @@ CREATE TABLE IF NOT EXISTS `_prisma_migrations` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('71c094f9-1bff-4380-90d2-a74450b5b59f', 'c0283a28a64265ea8f30ea850fd9a1026046ce23fb8050235c324b062223bc9e', NOW(3), '20261006083044_init', NULL, NULL, NOW(3), 1);
+VALUES ('a80fd6c6-45e5-45b6-ae80-59bdc71423d9', 'c0283a28a64265ea8f30ea850fd9a1026046ce23fb8050235c324b062223bc9e', NOW(3), '20261006083044_init', NULL, NULL, NOW(3), 1);
+
+INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
+VALUES ('52bd329a-555b-48a3-a6b0-660d4993b2d5', '5a4c19e480ab573947fd9660492edf85aa917a443bd30335d172b6f33e9b8fb7', NOW(3), '20261006182934_message_reactions', NULL, NULL, NOW(3), 1);

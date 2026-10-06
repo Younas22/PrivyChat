@@ -1,13 +1,13 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
-import type { ChatMessage, MessagesPage, OwnedRoomSummary } from "@/lib/types";
+import { REACTION_EMOJIS, type ChatMessage, type MessagesPage, type OwnedRoomSummary, type ReactionGroup } from "@/lib/types";
 import { getStorage } from "@/lib/storage";
 import { Errors } from "./errors";
 import { getCurrentUser, upsertCurrentUser } from "./identity";
 import { publish, type RoomRef } from "./realtime";
 import { generateRoomCode, ROOM_CODE_PATTERN } from "./room-code";
-import { messageInclude, roomInclude, toChatMessage, toMemberInfo, toRoomInfo } from "./serialize";
+import { groupReactions, messageInclude, roomInclude, toChatMessage, toMemberInfo, toRoomInfo } from "./serialize";
 
 export const MAX_MEMBERS = 2;
 export const MAX_MESSAGE_LENGTH = 4000;
@@ -251,15 +251,58 @@ export async function deleteMessage(roomCode: string, messageId: string) {
   if (!message || message.deletedAt) throw Errors.badRequest("This message was already deleted.");
   if (message.senderId !== user.id) throw Errors.badRequest("You can only delete your own messages.");
 
-  await prisma.message.update({
-    where: { id: message.id },
-    data: { deletedAt: new Date(), content: null, fileUrl: null, fileName: null, fileMimeType: null, fileSize: null },
-  });
+  await prisma.$transaction([
+    prisma.message.update({
+      where: { id: message.id },
+      data: { deletedAt: new Date(), content: null, fileUrl: null, fileName: null, fileMimeType: null, fileSize: null },
+    }),
+    prisma.messageReaction.deleteMany({ where: { messageId: message.id } }),
+  ]);
   if (message.fileUrl) {
     const key = fileKeyFromUrl(message.fileUrl);
     if (key) await getStorage().delete(key).catch((err) => console.error("Failed to delete file", err));
   }
   await publish(room, { type: "message:deleted", messageId: message.id });
+}
+
+// ---------- Reactions ----------
+
+/**
+ * Sets the caller's reaction on a message. Each person has at most one reaction per message;
+ * sending the same emoji again removes it. The caller must already be authorized (requireMember).
+ */
+export async function toggleReaction(
+  { user, room }: { user: { id: string }; room: RoomRef },
+  messageId: string,
+  emoji: string,
+): Promise<ReactionGroup[]> {
+  if (!(REACTION_EMOJIS as readonly string[]).includes(emoji)) throw Errors.badRequest("Unsupported reaction.");
+  const message = await prisma.message.findFirst({
+    where: { id: messageId, roomId: room.id, deletedAt: null },
+    select: { id: true },
+  });
+  if (!message) throw Errors.badRequest("This message is no longer available.");
+
+  const where = { messageId_userId: { messageId: message.id, userId: user.id } };
+  const existing = await prisma.messageReaction.findUnique({ where, select: { emoji: true } });
+  if (existing?.emoji === emoji) {
+    await prisma.messageReaction.delete({ where });
+  } else {
+    await prisma.messageReaction.upsert({
+      where,
+      create: { messageId: message.id, userId: user.id, emoji },
+      update: { emoji, createdAt: new Date() },
+    });
+  }
+
+  const rows = await prisma.messageReaction.findMany({
+    where: { messageId: message.id },
+    orderBy: { createdAt: "asc" },
+    select: { emoji: true, userId: true },
+  });
+  const reactions = groupReactions(rows);
+  await publish(room, { type: "reaction:updated", messageId: message.id, reactions });
+  return reactions;
 }
 
 // ---------- Files ----------

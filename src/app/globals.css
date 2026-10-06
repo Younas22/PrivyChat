@@ -35,3 +35,23 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgb(0 0 0 / 0.2) transparent;
 }
+
+/* Pointer cursor on everything clickable (Tailwind's reset leaves buttons with the default arrow). */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="menuitem"],
+  a[href],
+  label[for],
+  select,
+  summary,
+  input[type="file"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}

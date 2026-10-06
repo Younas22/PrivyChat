@@ -1,48 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { readFlag, usePersistentFlag, writeFlag } from "@/lib/client/usePersistentFlag";
 
 const STORAGE_KEY = "talkroom:bell";
 const SOUND_URL = "/sounds/bell.wav";
 
-// Per-browser preference, so each person controls their own bell.
-// Falls back to memory when storage is blocked (private mode, disabled site data).
-let memoryValue: boolean | null = null;
-const listeners = new Set<() => void>();
-
-function readEnabled() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored !== null) return stored !== "off";
-  } catch {
-    /* storage unavailable */
-  }
-  return memoryValue ?? true;
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  window.addEventListener("storage", listener); // keep other tabs in sync
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", listener);
-  };
-}
-
-function writeEnabled(on: boolean) {
-  memoryValue = on;
-  try {
-    localStorage.setItem(STORAGE_KEY, on ? "on" : "off");
-  } catch {
-    /* storage unavailable: memory value still applies for this page */
-  }
-  listeners.forEach((l) => l());
-}
-
 /** Message bell: `ring()` plays the sound when enabled; `toggle()` switches it on/off. */
 export function useBell() {
-  // Server render assumes "on"; the real value is read after hydration.
-  const enabled = useSyncExternalStore(subscribe, readEnabled, () => true);
+  // Each person's own choice, kept in their browser (on by default).
+  const [enabled] = usePersistentFlag(STORAGE_KEY, true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const audio = useCallback(() => {
@@ -86,12 +53,12 @@ export function useBell() {
   }, [audio]);
 
   const ring = useCallback(() => {
-    if (readEnabled()) play();
+    if (readFlag(STORAGE_KEY, true)) play();
   }, [play]);
 
   const toggle = useCallback(() => {
-    const next = !readEnabled();
-    writeEnabled(next);
+    const next = !readFlag(STORAGE_KEY, true);
+    writeFlag(STORAGE_KEY, next);
     if (next) play(); // preview the sound when turning it on
     return next;
   }, [play]);

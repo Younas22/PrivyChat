@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChatMessage, MessagesPage, RealtimeConfig, RoomEvent, RoomInfo, RoomMemberInfo, Viewer } from "@/lib/types";
+import type {
+  ChatMessage,
+  MessagesPage,
+  ReactionGroup,
+  RealtimeConfig,
+  RoomEvent,
+  RoomInfo,
+  RoomMemberInfo,
+  Viewer,
+} from "@/lib/types";
 import { directUpload } from "@/lib/client/direct-upload";
 import { api, ApiError, uploadWithProgress } from "@/lib/client/api";
 import { APP_NAME } from "@/lib/brand";
@@ -12,7 +21,18 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Dialog } from "@/components/ui/Dialog";
 import { Logo } from "@/components/ui/Logo";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
-import { BellIcon, BellOffIcon, CopyIcon, MenuIcon, MessageIcon, XIcon } from "@/components/ui/icons";
+import {
+  BellIcon,
+  BellOffIcon,
+  CopyIcon,
+  MenuIcon,
+  MessageIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+  RefreshIcon,
+  XIcon,
+} from "@/components/ui/icons";
+import { usePersistentFlag } from "@/lib/client/usePersistentFlag";
 import { Composer, type UploadLimits } from "./Composer";
 import { Lightbox } from "./Lightbox";
 import { MessageList, type MessageListHandle, type PendingText, type PendingUpload } from "./MessageList";
@@ -45,6 +65,19 @@ function upsert(list: ChatMessage[], incoming: ChatMessage[]) {
   const map = new Map(list.map((m) => [m.id, m]));
   for (const m of incoming) map.set(m.id, m);
   return [...map.values()].sort(byTime);
+}
+
+/** Same toggle rule as the server: one reaction per person, same emoji again removes it. */
+function applyReaction(groups: ReactionGroup[], userId: string, emoji: string): ReactionGroup[] {
+  const had = groups.find((g) => g.userIds.includes(userId))?.emoji;
+  const without = groups
+    .map((g) => ({ ...g, userIds: g.userIds.filter((u) => u !== userId) }))
+    .filter((g) => g.userIds.length > 0);
+  if (had === emoji) return without;
+  const existing = without.find((g) => g.emoji === emoji);
+  return existing
+    ? without.map((g) => (g === existing ? { ...g, userIds: [...g.userIds, userId] } : g))
+    : [...without, { emoji, userIds: [userId] }];
 }
 
 const tempId = () => `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -150,13 +183,16 @@ function ChatRoomInner({
         case "message:deleted":
           setMessages((list) =>
             list.map((m) => {
-              if (m.id === event.messageId) return { ...m, isDeleted: true, content: null, file: null };
+              if (m.id === event.messageId) return { ...m, isDeleted: true, content: null, file: null, reactions: [] };
               if (m.replyTo?.id === event.messageId)
                 return { ...m, replyTo: { ...m.replyTo, isDeleted: true, preview: "Message deleted" } };
               return m;
             }),
           );
           setReplyTo((r) => (r?.id === event.messageId ? null : r));
+          break;
+        case "reaction:updated":
+          setMessages((list) => list.map((m) => (m.id === event.messageId ? { ...m, reactions: event.reactions } : m)));
           break;
         case "room:updated":
           setRoom(event.room);
@@ -232,6 +268,18 @@ function ChatRoomInner({
     lastMessageId.current = last.id;
     if (last.senderId !== viewer.userId && !last.isDeleted) ringBell();
   }, [messages, viewer.userId, ringBell]);
+
+  // Desktop sidebar can be hidden; each person's choice is remembered in their browser.
+  const [sidebarOpen, setSidebarOpen] = usePersistentFlag("talkroom:sidebar", true);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    await Promise.all([resync(), new Promise((r) => setTimeout(r, 400))]); // keep the spin visible
+    setRefreshing(false);
+    toast("Chat updated", "success");
+  };
 
   const toggleBell = () => {
     const on = bell.toggle();
@@ -461,6 +509,28 @@ function ChatRoomInner({
     }
   };
 
+  // ---------- reactions ----------
+
+  const onReact = useCallback(
+    async (messageId: string, emoji: string) => {
+      // Show it instantly, then take the server's answer as the truth.
+      setMessages((list) =>
+        list.map((m) => (m.id === messageId ? { ...m, reactions: applyReaction(m.reactions, viewer.userId, emoji) } : m)),
+      );
+      try {
+        const { reactions } = await api<{ reactions: ReactionGroup[] }>(
+          `${base}/messages/${encodeURIComponent(messageId)}/reaction`,
+          { method: "PUT", json: { emoji } },
+        );
+        setMessages((list) => list.map((m) => (m.id === messageId ? { ...m, reactions } : m)));
+      } catch (err) {
+        reportError(err);
+        void resync(); // undo the optimistic change
+      }
+    },
+    [base, viewer.userId, reportError, resync],
+  );
+
   const onReply = useCallback((m: ChatMessage) => setReplyTo(m), []);
   const onDelete = useCallback((m: ChatMessage) => setConfirm({ kind: "deleteMessage", message: m }), []);
   const onImageClick = useCallback((src: string, name: string) => setLightbox({ src, name }), []);
@@ -523,18 +593,38 @@ function ChatRoomInner({
   return (
     <div className="flex h-dvh overflow-hidden bg-white">
       {/* Desktop sidebar */}
-      <aside className="hidden w-80 shrink-0 flex-col bg-neutral-950 lg:flex">
-        <div className="px-5 py-4">
+      <aside className={`hidden w-80 shrink-0 flex-col bg-neutral-950 ${sidebarOpen ? "lg:flex" : ""}`}>
+        <div className="flex items-center justify-between px-5 py-4">
           <Logo dark />
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="-mr-2 grid size-10 place-items-center rounded-xl text-neutral-400 transition hover:bg-white/10 hover:text-white"
+            aria-label="Hide sidebar"
+            title="Hide sidebar"
+          >
+            <PanelLeftCloseIcon className="size-5" />
+          </button>
         </div>
         <div className="scrollbar-thin flex-1 overflow-y-auto px-5 pb-6">{panel}</div>
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-neutral-200 bg-white px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-5">
+        <header className="flex items-center gap-2 border-b sm:gap-3 border-neutral-200 bg-white px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-5">
           <Link href="/" className="grid size-9 shrink-0 place-items-center rounded-lg bg-indigo-600 text-white lg:hidden" aria-label={`${APP_NAME} home`}>
             <MessageIcon className="size-4" />
           </Link>
+          {!sidebarOpen && (
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="hidden size-10 shrink-0 place-items-center rounded-xl text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-50 lg:grid"
+              aria-label="Show sidebar"
+              title="Show sidebar"
+            >
+              <PanelLeftOpenIcon className="size-5" />
+            </button>
+          )}
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold text-neutral-950">{room.name}</h1>
             <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-neutral-500">
@@ -557,6 +647,16 @@ function ChatRoomInner({
               )}
             </div>
           </div>
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={refreshing}
+            className="grid size-10 shrink-0 place-items-center rounded-xl text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-50"
+            aria-label="Refresh chat"
+            title="Refresh"
+          >
+            <RefreshIcon className={`size-5 ${refreshing ? "animate-spin" : ""}`} />
+          </button>
           {!isSaved && (
             <button
               type="button"
@@ -615,6 +715,7 @@ function ChatRoomInner({
           onLoadOlder={loadOlder}
           onReply={onReply}
           onDelete={onDelete}
+          onReact={onReact}
           onQuoteClick={scrollToMessage}
           onImageClick={onImageClick}
           onRetryText={(id) => {

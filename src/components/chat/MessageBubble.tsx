@@ -1,14 +1,15 @@
 "use client";
 
-import { memo } from "react";
-import type { ChatMessage, ReplyPreview } from "@/lib/types";
+import { memo, useEffect, useRef, useState } from "react";
+import { REACTION_EMOJIS, type ChatMessage, type ReplyPreview } from "@/lib/types";
 import { fileExtension, formatBytes, formatTime } from "@/lib/client/format";
 import { Avatar } from "@/components/ui/Avatar";
-import { DownloadIcon, ExternalIcon, FileIcon, ReplyIcon, TrashIcon } from "@/components/ui/icons";
+import { DownloadIcon, ExternalIcon, FileIcon, ReplyIcon, SmileIcon, TrashIcon } from "@/components/ui/icons";
 import { LinkifiedText } from "./LinkifiedText";
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  viewerId: string;
   isMine: boolean;
   showSender: boolean;
   active: boolean;
@@ -17,6 +18,7 @@ interface MessageBubbleProps {
   onToggleActive: (id: string) => void;
   onReply: (message: ChatMessage) => void;
   onDelete: (message: ChatMessage) => void;
+  onReact: (messageId: string, emoji: string) => void;
   onQuoteClick: (id: string) => void;
   onImageClick: (src: string, name: string) => void;
 }
@@ -115,6 +117,7 @@ function Attachment({
 
 function MessageBubbleImpl({
   message,
+  viewerId,
   isMine,
   showSender,
   active,
@@ -123,9 +126,33 @@ function MessageBubbleImpl({
   onToggleActive,
   onReply,
   onDelete,
+  onReact,
   onQuoteClick,
   onImageClick,
 }: MessageBubbleProps) {
+  const [picking, setPicking] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  // Close the reaction picker on an outside tap or Escape.
+  useEffect(() => {
+    if (!picking) return;
+    const onDown = (e: PointerEvent) => {
+      if (!rowRef.current?.contains(e.target as Node)) setPicking(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPicking(false);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [picking]);
+
+  const react = (emoji: string) => {
+    setPicking(false);
+    onReact(message.id, emoji);
+  };
+
   const hasMedia = !message.isDeleted && (message.type === "image" || message.type === "video");
   // Documents render as a plain file card with no colored bubble behind it.
   const isDoc = !message.isDeleted && message.type === "document";
@@ -153,7 +180,31 @@ function MessageBubbleImpl({
       {showSender && !isMine && (
         <span className="mb-1 px-1 text-xs font-medium text-neutral-500">{message.senderName}</span>
       )}
-      <div className={`flex max-w-full items-center gap-1.5 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+      <div ref={rowRef} className={`relative flex max-w-full items-center gap-1.5 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+        {/* Anchored to the bubble's outer edge so it always stays on screen. */}
+        {picking && (
+          <div
+            role="menu"
+            aria-label="React to message"
+            className={`animate-slide-up absolute bottom-full z-20 mb-2 flex gap-0.5 rounded-full bg-white p-1 shadow-lg ring-1 ring-neutral-200 ${
+              isMine ? "right-0" : "left-0"
+            }`}
+          >
+            {REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                role="menuitem"
+                onClick={() => react(emoji)}
+                className="grid size-10 place-items-center rounded-full text-xl transition hover:scale-125 hover:bg-neutral-100"
+                aria-label={`React with ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div
           onClick={handleBubbleClick}
           className={`relative min-w-0 rounded-2xl transition ${
@@ -198,9 +249,21 @@ function MessageBubbleImpl({
         {canAct && !message.isDeleted && (
           <div
             className={`shrink-0 gap-0.5 transition ${
-              active ? "flex" : "hidden md:flex md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100"
+              active || picking ? "flex" : "hidden md:flex md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100"
             }`}
           >
+            <button
+              type="button"
+              onClick={() => setPicking((v) => !v)}
+              className={`grid size-9 place-items-center rounded-full bg-white shadow-sm ring-1 ring-neutral-200 hover:text-indigo-600 ${
+                picking ? "text-indigo-600" : "text-neutral-600"
+              }`}
+              aria-label="React"
+              aria-expanded={picking}
+              title="React"
+            >
+              <SmileIcon className="size-4" />
+            </button>
             <button
               type="button"
               onClick={() => onReply(message)}
@@ -224,6 +287,31 @@ function MessageBubbleImpl({
           </div>
         )}
       </div>
+
+      {message.reactions.length > 0 && !message.isDeleted && (
+        <div className={`relative z-10 -mt-1.5 flex flex-wrap gap-1 ${isMine ? "justify-end pr-2" : "pl-2"}`}>
+          {message.reactions.map((r) => {
+            const mine = r.userIds.includes(viewerId);
+            return (
+              <button
+                key={r.emoji}
+                type="button"
+                disabled={!canAct}
+                onClick={() => onReact(message.id, r.emoji)}
+                aria-pressed={mine}
+                aria-label={`${r.emoji} ${r.userIds.length}${mine ? ", including you. Tap to remove" : ""}`}
+                title={mine ? "Tap to remove your reaction" : "Tap to react with this too"}
+                className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-sm shadow-sm ring-1 transition enabled:hover:scale-105 ${
+                  mine ? "bg-indigo-50 ring-indigo-300" : "bg-white ring-neutral-200"
+                }`}
+              >
+                <span>{r.emoji}</span>
+                {r.userIds.length > 1 && <span className="text-xs font-medium text-neutral-600">{r.userIds.length}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
       </div>
     </div>
   );
