@@ -47,7 +47,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ key: str
       const target = await storage.redirectUrl(key);
       if (!target) throw notFound();
       const res = NextResponse.redirect(download ? `${target}?download=1` : target, 302);
-      res.headers.set("Cache-Control", "private, no-store");
+      // Let the browser reuse the redirect briefly so images don't hit the server on every render.
+      res.headers.set("Cache-Control", "private, max-age=600");
       res.headers.set("Referrer-Policy", "no-referrer");
       return res;
     }

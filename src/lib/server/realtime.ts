@@ -1,12 +1,18 @@
 import "server-only";
 import { createHash, createHmac } from "node:crypto";
+import { after } from "next/server";
 import type { RoomEvent } from "@/lib/types";
 
 type Listener = (event: RoomEvent) => void;
-type RoomRef = { id: string; roomCode: string };
+
+/** A room plus the members currently subscribed to its live channel. */
+export type RoomRef = { id: string; roomCode: string; members: { userId: string }[] };
 
 const globalForBus = globalThis as unknown as { roomBus?: Map<string, Set<Listener>> };
 const channels = (globalForBus.roomBus ??= new Map<string, Set<Listener>>());
+
+// Pusher rejects messages over 10 KB; bigger events are sent as a "sync" signal instead.
+const MAX_PUSHER_PAYLOAD = 9000;
 
 // ---------- Pusher (production / serverless) ----------
 
@@ -16,8 +22,23 @@ export function pusherConfig() {
   return { appId: PUSHER_APP_ID, key: PUSHER_KEY, secret: PUSHER_SECRET, cluster: PUSHER_CLUSTER };
 }
 
-export const roomChannel = (roomCode: string) => `private-room-${roomCode}`;
-export const ROOM_CHANNEL_PATTERN = /^private-room-([A-Za-z0-9]{6,32})$/;
+export const ROOM_CHANNEL_PATTERN = /^private-room-([A-Za-z0-9]{6,32})-([a-f0-9]{20})$/;
+
+/**
+ * Private channel name for a room's CURRENT member set. When someone is removed (or joins),
+ * the channel changes; a removed member can't be authorized for the new one, so they stop
+ * receiving messages even if they keep their old subscription open.
+ */
+export function roomChannel(room: RoomRef): string | null {
+  const cfg = pusherConfig();
+  if (!cfg) return null;
+  const memberSet = room.members
+    .map((m) => m.userId)
+    .sort()
+    .join(",");
+  const token = createHmac("sha256", cfg.secret).update(`${room.id}:${memberSet}`).digest("hex").slice(0, 20);
+  return `private-room-${room.roomCode}-${token}`;
+}
 
 /** Signs a private-channel subscription (Pusher auth protocol). */
 export function signChannelAuth(socketId: string, channel: string) {
@@ -27,19 +48,12 @@ export function signChannelAuth(socketId: string, channel: string) {
   return `${cfg.key}:${signature}`;
 }
 
-/**
- * Sends a content-free "sync" signal through Pusher's REST API.
- * Clients re-fetch through the permission-checked API, so no message data ever goes through Pusher.
- */
-async function triggerPusher(roomCode: string, event: RoomEvent) {
+/** Sends one event through Pusher's REST API. */
+async function triggerPusher(channel: string, name: string, data: string) {
   const cfg = pusherConfig();
   if (!cfg) return;
   const path = `/apps/${cfg.appId}/events`;
-  const body = JSON.stringify({
-    name: "sync",
-    channels: [roomChannel(roomCode)],
-    data: JSON.stringify({ type: event.type }),
-  });
+  const body = JSON.stringify({ name, channels: [channel], data });
   const params = new URLSearchParams({
     auth_key: cfg.key,
     auth_timestamp: String(Math.floor(Date.now() / 1000)),
@@ -70,7 +84,10 @@ export function subscribe(roomId: string, listener: Listener) {
   };
 }
 
-/** Broadcasts a room event to local SSE listeners and (when configured) Pusher. */
+/**
+ * Broadcasts a room event to local SSE listeners and (when configured) Pusher.
+ * `room.members` must be the member set whose clients should receive it (e.g. BEFORE a removal).
+ */
 export async function publish(room: RoomRef, event: RoomEvent) {
   const set = channels.get(room.id);
   if (set) {
@@ -82,6 +99,18 @@ export async function publish(room: RoomRef, event: RoomEvent) {
       }
     }
   }
-  // Awaited so serverless functions don't freeze before the request is sent.
-  await triggerPusher(room.roomCode, event).catch((err) => console.error("Pusher trigger failed", err));
+
+  const channel = roomChannel(room);
+  if (!channel) return;
+  const payload = JSON.stringify(event);
+  const [name, data] =
+    Buffer.byteLength(payload) <= MAX_PUSHER_PAYLOAD ? ["event", payload] : ["sync", JSON.stringify({ type: event.type })];
+  const task = () => triggerPusher(channel, name, data).catch((err) => console.error("Pusher trigger failed", err));
+
+  // Send after the response so the sender isn't kept waiting; Vercel keeps the function alive for it.
+  try {
+    after(task);
+  } catch {
+    await task(); // outside a request scope
+  }
 }

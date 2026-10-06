@@ -3,7 +3,7 @@ import { APP_NAME } from "@/lib/brand";
 import { ChatRoom } from "@/components/chat/ChatRoom";
 import { JoinRoomForm } from "@/components/chat/JoinRoomForm";
 import { RoomNotice } from "@/components/chat/RoomNotice";
-import { listMessages, resolveRoomAccess } from "@/lib/server/rooms";
+import { listRoomMessages, resolveRoomAccess } from "@/lib/server/rooms";
 import { toRoomInfo } from "@/lib/server/serialize";
 import { pusherConfig } from "@/lib/server/realtime";
 import { maxSizeFor } from "@/lib/server/uploads";
@@ -38,7 +38,7 @@ export default async function ChatPage({ params }: PageProps<"/chat/[roomCode]">
     case "saved":
     case "member": {
       const { room, user } = access;
-      const page = await listMessages(roomCode);
+      const page = await listRoomMessages(room.id); // access already checked above
       const pusher = pusherConfig();
       return (
         <ChatRoom

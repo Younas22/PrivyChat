@@ -204,7 +204,10 @@ function ChatRoomInner({
     }
   }, [base, handleFatal, toast]);
 
-  const connection = useRoomEvents(roomCode, status === "active" && !isSaved, realtime, { onEvent, onResync: resync });
+  const connection = useRoomEvents(roomCode, status === "active" && !isSaved, realtime, room.channel, {
+    onEvent,
+    onResync: resync,
+  });
 
   // ---------- messages ----------
 

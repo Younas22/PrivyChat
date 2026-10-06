@@ -30,12 +30,11 @@ export async function directUpload(opts: {
       multipart: file.size > 8 * 1024 * 1024,
       onUploadProgress: (e) => opts.onProgress(e.percentage / 100),
     });
-  } catch {
-    throw new ApiError(
-      navigator.onLine ? "Upload failed. Please try again." : "Network error. Check your connection and try again.",
-      "upload_failed",
-      0,
-    );
+  } catch (err) {
+    if (!navigator.onLine) throw new ApiError("Network error. Check your connection and try again.", "network", 0);
+    console.error("Direct upload failed", err);
+    const reason = err instanceof Error ? err.message.replace(/^Vercel Blob:s*/i, "") : "";
+    throw new ApiError(reason ? `Upload failed: ${reason}` : "Upload failed. Please try again.", "upload_failed", 0);
   }
   return api(`${base}/upload/complete`, {
     method: "POST",

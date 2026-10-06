@@ -15,7 +15,8 @@ interface Handlers {
 
 /**
  * Live room updates.
- * - Pusher (production): content-free "sync" signals trigger a refresh through the permission-checked API.
+ * - Pusher (production): full events on the room's current private channel (a "sync" signal
+ *   triggers a refresh for oversized events). The channel changes when the member set changes.
  * - SSE (local single server): full events from the in-process bus.
  * Falls back to polling whenever the live connection is down.
  */
@@ -23,6 +24,7 @@ export function useRoomEvents(
   roomCode: string,
   enabled: boolean,
   realtime: RealtimeConfig,
+  channelName: string | null,
   handlers: Handlers,
 ): ConnectionState {
   const [connection, setConnection] = useState<ConnectionState>("connecting");
@@ -61,19 +63,20 @@ export function useRoomEvents(
       syncTimer = setTimeout(() => ref.current.onResync(), 120);
     };
 
-    if (pusherKey && pusherCluster) {
+    if (pusherKey && pusherCluster && channelName) {
       void import("pusher-js").then(({ default: Pusher }) => {
         if (disposed) return;
         const client = new Pusher(pusherKey, {
           cluster: pusherCluster,
           channelAuthorization: { endpoint: "/api/realtime/auth", transport: "ajax" },
         });
-        const channel = client.subscribe(`private-room-${roomCode}`);
+        const channel = client.subscribe(channelName);
         channel.bind("pusher:subscription_succeeded", goLive);
         channel.bind("pusher:subscription_error", () => {
           startPolling();
           ref.current.onResync(); // learns why (closed / removed / deleted)
         });
+        channel.bind("event", (event: RoomEvent) => ref.current.onEvent(event));
         channel.bind("sync", scheduleResync);
         client.connection.bind("state_change", ({ current }: { current: string }) => {
           if (current === "connected" && channel.subscribed) goLive();
@@ -120,7 +123,7 @@ export function useRoomEvents(
       if (retryTimer) clearTimeout(retryTimer);
       if (syncTimer) clearTimeout(syncTimer);
     };
-  }, [roomCode, enabled, pusherKey, pusherCluster]);
+  }, [roomCode, enabled, pusherKey, pusherCluster, channelName]);
 
   return connection;
 }

@@ -46,6 +46,8 @@ export interface RoomInfo {
   members: RoomMemberInfo[];
   createdAt: string;
   closedAt: string | null;
+  /** Live-update channel for the current member set (Pusher), or null for local SSE. */
+  channel: string | null;
 }
 
 export interface Viewer {

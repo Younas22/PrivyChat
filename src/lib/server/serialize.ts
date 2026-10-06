@@ -1,6 +1,7 @@
 import "server-only";
 import type { ChatMessage, RoomInfo, RoomMemberInfo } from "@/lib/types";
 import type { Prisma } from "@/generated/prisma/client";
+import { roomChannel } from "./realtime";
 
 export const messageInclude = {
   sender: { select: { id: true, displayName: true } },
@@ -80,5 +81,6 @@ export function toRoomInfo(room: RoomWithMembers): RoomInfo {
     members: room.members.map((m) => toMemberInfo(m, room.ownerId)),
     createdAt: room.createdAt.toISOString(),
     closedAt: room.closedAt?.toISOString() ?? null,
+    channel: roomChannel(room),
   };
 }

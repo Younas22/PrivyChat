@@ -11,6 +11,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ roomCod
   try {
     const { roomCode } = await params;
     const { user, room } = await requireMember(roomCode);
+    if (process.env.VERCEL && !process.env.BLOB_READ_WRITE_TOKEN) {
+      // Vercel's disk is read-only: uploads need a connected Blob store.
+      throw new AppError(503, "storage_not_configured", "File sharing isn't set up yet. Connect a Vercel Blob store to this project.");
+    }
     rateLimit(`upload:${user.id}`, 10, 60_000);
 
     const declared = Number(req.headers.get("content-length") ?? 0);

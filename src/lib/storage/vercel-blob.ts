@@ -40,8 +40,15 @@ export class VercelBlobDriver implements StorageDriver {
     throw new Error("Vercel Blob files are served via redirectUrl()");
   }
 
+  // Public URLs are "<store base>/<pathname>". Learn the base once, then build URLs without an API call.
+  private baseUrl: string | null = null;
+
   async redirectUrl(key: string) {
-    return (await this.meta(key))?.url ?? null;
+    if (this.baseUrl) return `${this.baseUrl}/${key}`;
+    const meta = await this.meta(key);
+    if (!meta) return null;
+    if (meta.url.endsWith(`/${key}`)) this.baseUrl = meta.url.slice(0, -key.length - 1);
+    return meta.url;
   }
 
   async delete(key: string) {

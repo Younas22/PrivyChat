@@ -66,6 +66,7 @@ export async function GET() {
     {
       databaseUrl: target,
       database,
+      region: process.env.VERCEL_REGION ?? "local",
       pusher: Boolean(pusherConfig()),
       blobStorage: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
     },
