@@ -27,7 +27,8 @@ interface ChatRoomProps {
   initialHasMore: boolean;
   limits: UploadLimits;
   realtime: RealtimeConfig;
-  directUploads: boolean;
+  /** Access level for direct-to-storage uploads, or null to POST files to our own route. */
+  directUploads: "public" | "private" | null;
 }
 
 type Confirm =
@@ -265,6 +266,7 @@ function ChatRoomInner({
           ({ message } = await directUpload({
             base,
             roomId: roomRef.current.id,
+            access: directUploads,
             file: item.file,
             caption: item.caption,
             replyToMessageId: item.replyTo?.id ?? null,

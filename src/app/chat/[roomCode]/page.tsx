@@ -48,7 +48,7 @@ export default async function ChatPage({ params }: PageProps<"/chat/[roomCode]">
           initialHasMore={page.hasMore}
           limits={{ image: maxSizeFor("image"), video: maxSizeFor("video"), document: maxSizeFor("document") }}
           realtime={pusher ? { provider: "pusher", key: pusher.key, cluster: pusher.cluster } : { provider: "sse" }}
-          directUploads={getStorage().clientUploads}
+          directUploads={getStorage().clientUploads ? (getStorage().clientAccess ?? "private") : null}
         />
       );
     }

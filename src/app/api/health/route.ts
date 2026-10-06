@@ -69,6 +69,7 @@ export async function GET() {
       region: process.env.VERCEL_REGION ?? "local",
       pusher: Boolean(pusherConfig()),
       blobStorage: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
+      blobAccess: process.env.BLOB_READ_WRITE_TOKEN ? (process.env.BLOB_ACCESS === "public" ? "public" : "private") : null,
     },
     { headers: { "Cache-Control": "no-store" } },
   );

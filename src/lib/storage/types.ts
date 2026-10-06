@@ -1,5 +1,3 @@
-import type { Readable } from "node:stream";
-
 /**
  * Storage abstraction. Implement this interface for S3, Cloudflare R2,
  * Supabase Storage, etc. and return it from getStorage().
@@ -10,14 +8,16 @@ export interface StorageDriver {
    * serverless request limit); false when files are POSTed to our own upload route.
    */
   readonly clientUploads: boolean;
+  /** Access level browsers must request for direct uploads (Vercel Blob store setting). */
+  readonly clientAccess?: "public" | "private";
   put(key: string, data: Buffer, mimeType: string): Promise<void>;
   /** Returns size in bytes or null if the object doesn't exist. */
   size(key: string): Promise<number | null>;
   /** Reads the first `bytes` bytes (used to verify file types). */
   readStart(key: string, bytes: number): Promise<Buffer>;
-  /** Streams an object from our own server (optionally a byte range, inclusive). */
-  read(key: string, range?: { start: number; end: number }): Readable;
-  /** If set, the file route redirects authorized users to this URL instead of streaming. */
+  /** Streams an object through our own server (optionally a byte range, inclusive). */
+  read(key: string, range?: { start: number; end: number }): Promise<ReadableStream<Uint8Array>>;
+  /** If it returns a URL, the file route redirects authorized users there instead of streaming. */
   redirectUrl?(key: string): Promise<string | null>;
   delete(key: string): Promise<void>;
   /** Deletes every object under a prefix (e.g. a whole room). */

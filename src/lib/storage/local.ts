@@ -2,6 +2,7 @@ import "server-only";
 import { createReadStream } from "node:fs";
 import { mkdir, open, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { Readable } from "node:stream";
 import type { StorageDriver } from "./types";
 
 const KEY_PATTERN = /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_.-]+)*$/;
@@ -47,8 +48,8 @@ export class LocalStorageDriver implements StorageDriver {
     }
   }
 
-  read(key: string, range?: { start: number; end: number }) {
-    return createReadStream(this.resolve(key), range);
+  async read(key: string, range?: { start: number; end: number }) {
+    return Readable.toWeb(createReadStream(this.resolve(key), range)) as ReadableStream<Uint8Array>;
   }
 
   async delete(key: string) {

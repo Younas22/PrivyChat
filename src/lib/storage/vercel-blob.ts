@@ -1,18 +1,28 @@
 import "server-only";
-import { Readable } from "node:stream";
-import { BlobNotFoundError, del, head, list, put } from "@vercel/blob";
+import { BlobNotFoundError, del, get, head, list, put } from "@vercel/blob";
 import type { StorageDriver } from "./types";
+
+type Access = "public" | "private";
 
 /**
  * Vercel Blob driver. Browsers upload directly to Blob (see /upload/token), so files of any
- * allowed size skip the serverless request limit. Pathnames contain a 128-bit random name and
- * are only revealed to room members by the file route, which checks membership first.
+ * allowed size skip the serverless request limit.
+ * - private store (default): files are only readable with the store token, so the file route
+ *   streams them to members after checking membership.
+ * - public store (BLOB_ACCESS=public): files have unguessable URLs and members are redirected.
  */
 export class VercelBlobDriver implements StorageDriver {
   readonly clientUploads = true;
+  readonly clientAccess: Access;
+
+  constructor(access: Access) {
+    this.clientAccess = access;
+    // Public stores can hand out direct URLs; private ones are always streamed by us.
+    if (access === "private") this.redirectUrl = undefined;
+  }
 
   async put(key: string, data: Buffer, mimeType: string) {
-    await put(key, data, { access: "public", contentType: mimeType, addRandomSuffix: false });
+    await put(key, data, { access: this.clientAccess, contentType: mimeType, addRandomSuffix: false });
   }
 
   private async meta(key: string) {
@@ -28,28 +38,39 @@ export class VercelBlobDriver implements StorageDriver {
     return (await this.meta(key))?.size ?? null;
   }
 
-  async readStart(key: string, bytes: number) {
-    const meta = await this.meta(key);
-    if (!meta) throw new Error("Blob not found");
-    const res = await fetch(meta.url, { headers: { Range: `bytes=0-${bytes - 1}` }, cache: "no-store" });
-    if (!res.ok) throw new Error(`Blob read failed: ${res.status}`);
-    return Buffer.from(await res.arrayBuffer()).subarray(0, bytes);
+  async read(key: string, range?: { start: number; end: number }) {
+    const result = await get(key, {
+      access: this.clientAccess,
+      headers: range ? { Range: `bytes=${range.start}-${range.end}` } : undefined,
+    });
+    if (!result || result.statusCode !== 200) throw new Error("Blob not found");
+    return result.stream;
   }
 
-  read(): Readable {
-    throw new Error("Vercel Blob files are served via redirectUrl()");
+  async readStart(key: string, bytes: number) {
+    const reader = (await this.read(key, { start: 0, end: bytes - 1 })).getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (total < bytes) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      total += value.length;
+    }
+    await reader.cancel().catch(() => {});
+    return Buffer.concat(chunks).subarray(0, bytes);
   }
 
   // Public URLs are "<store base>/<pathname>". Learn the base once, then build URLs without an API call.
   private baseUrl: string | null = null;
 
-  async redirectUrl(key: string) {
+  redirectUrl?: (key: string) => Promise<string | null> = async (key) => {
     if (this.baseUrl) return `${this.baseUrl}/${key}`;
     const meta = await this.meta(key);
     if (!meta) return null;
     if (meta.url.endsWith(`/${key}`)) this.baseUrl = meta.url.slice(0, -key.length - 1);
     return meta.url;
-  }
+  };
 
   async delete(key: string) {
     await del(key);

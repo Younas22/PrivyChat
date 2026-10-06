@@ -1,4 +1,3 @@
-import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AppError, errorResponse } from "@/lib/server/errors";
@@ -7,6 +6,9 @@ import { getStorage } from "@/lib/storage";
 
 const KEY_PATTERN = /^([a-z0-9]{10,40})\/[a-f0-9]{32}\.[a-z0-9]{1,8}$/;
 const INLINE_TYPES = /^(image\/(jpeg|png|webp|gif)|video\/|application\/pdf$|text\/plain$)/;
+
+// Keep each streamed range below Vercel's ~4.5 MB response limit; media players fetch the next range.
+const MAX_RANGE_BYTES = 4 * 1024 * 1024;
 
 const notFound = () => new AppError(404, "file_not_found", "This file is no longer available.");
 
@@ -20,7 +22,7 @@ function parseRange(header: string | null, size: number) {
     start = Math.max(0, size - end);
     end = size - 1;
   }
-  end = Math.min(end, size - 1);
+  end = Math.min(end, size - 1, start + MAX_RANGE_BYTES - 1);
   if (start > end || start >= size) return "invalid" as const;
   return { start, end };
 }
@@ -35,17 +37,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ key: str
 
     const message = await prisma.message.findFirst({
       where: { roomId: match[1], fileUrl: fileUrlForKey(key), deletedAt: null },
-      select: { fileName: true, fileMimeType: true },
+      select: { fileName: true, fileMimeType: true, fileSize: true },
     });
     if (!message) throw notFound();
     const storage = getStorage();
     const mime = message.fileMimeType ?? "application/octet-stream";
     const download = new URL(req.url).searchParams.has("download") || !INLINE_TYPES.test(mime);
 
-    // Object storage: hand the (unguessable) file URL to the authorized member only.
-    if (storage.redirectUrl) {
-      const target = await storage.redirectUrl(key);
-      if (!target) throw notFound();
+    // Public object storage: hand the (unguessable) file URL to the authorized member only.
+    const target = storage.redirectUrl ? await storage.redirectUrl(key) : null;
+    if (target) {
       const res = NextResponse.redirect(download ? `${target}?download=1` : target, 302);
       // Let the browser reuse the redirect briefly so images don't hit the server on every render.
       res.headers.set("Cache-Control", "private, max-age=600");
@@ -53,7 +54,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ key: str
       return res;
     }
 
-    const size = await storage.size(key);
+    // Size is stored with the message, so streaming needs no extra storage lookup.
+    const size = message.fileSize ?? (await storage.size(key));
     if (size === null) throw notFound();
     const name = message.fileName ?? "file";
     const asciiName = name.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
@@ -62,7 +64,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ key: str
       "Content-Type": mime,
       "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(name)}`,
       "Accept-Ranges": "bytes",
-      "Cache-Control": "private, max-age=300",
+      "Cache-Control": "private, max-age=600",
       "X-Content-Type-Options": "nosniff",
       "Content-Security-Policy": "sandbox; default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'",
     });
@@ -75,11 +77,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ key: str
     if (range) {
       headers.set("Content-Range", `bytes ${range.start}-${range.end}/${size}`);
       headers.set("Content-Length", String(range.end - range.start + 1));
-      const body = Readable.toWeb(storage.read(key, range)) as ReadableStream;
-      return new Response(body, { status: 206, headers });
+      return new Response(await storage.read(key, range), { status: 206, headers });
     }
     headers.set("Content-Length", String(size));
-    return new Response(Readable.toWeb(storage.read(key)) as ReadableStream, { status: 200, headers });
+    return new Response(await storage.read(key), { status: 200, headers });
   } catch (err) {
     return errorResponse(err);
   }

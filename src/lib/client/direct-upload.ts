@@ -14,6 +14,7 @@ function randomHex(bytes: number) {
 export async function directUpload(opts: {
   base: string;
   roomId: string;
+  access: "public" | "private";
   file: File;
   caption: string;
   replyToMessageId: string | null;
@@ -23,7 +24,7 @@ export async function directUpload(opts: {
   const key = `${roomId}/${randomHex(16)}.${fileExtension(file.name).toLowerCase()}`;
   try {
     await upload(key, file, {
-      access: "public",
+      access: opts.access,
       handleUploadUrl: `${base}/upload/token`,
       clientPayload: JSON.stringify({ name: file.name, size: file.size }),
       contentType: mimeForName(file.name),
