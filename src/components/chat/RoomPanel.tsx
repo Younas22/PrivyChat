@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { RoomInfo, RoomMemberInfo, Viewer } from "@/lib/types";
+import { Avatar } from "@/components/ui/Avatar";
 import { ArchiveIcon, CopyIcon, MessageIcon, PencilIcon, ShareIcon, TrashIcon, UserMinusIcon } from "@/components/ui/icons";
 
 export type ConnectionState = "connecting" | "live" | "polling";
@@ -89,9 +90,7 @@ export function RoomPanel(props: RoomPanelProps) {
         <ul className="space-y-1">
           {room.members.map((m) => (
             <li key={m.id} className="flex min-h-11 items-center gap-3 rounded-xl px-1">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-indigo-600 text-sm font-semibold uppercase">
-                {m.displayName.slice(0, 1)}
-              </span>
+              <Avatar name={m.displayName} id={m.userId} size="md" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
                   {m.displayName}

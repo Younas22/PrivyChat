@@ -455,12 +455,12 @@ function ChatRoomInner({
           </Link>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold text-neutral-950">{room.name}</h1>
-            <div className="flex items-center gap-2 text-neutral-500">
+            <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-neutral-500">
               <span className="text-xs">
                 {room.members.length} {room.members.length === 1 ? "Member" : "Members"}
               </span>
               <span className="text-neutral-300">·</span>
-              {isSaved ? <span className="text-xs font-medium text-neutral-700">Saved · read-only</span> : <ConnectionBadge connection={connection} />}
+              {isSaved ? <span className="text-xs font-medium text-neutral-700">Saved<span className="hidden sm:inline"> · read-only</span></span> : <ConnectionBadge connection={connection} />}
             </div>
           </div>
           {isSaved ? (

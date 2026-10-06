@@ -218,8 +218,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               })}
 
               {pending.map((p) => (
-                <div key={p.tempId} className="mt-1 flex flex-col items-end">
-                  <div className="max-w-[calc(100vw-6rem)] rounded-2xl rounded-br-md bg-indigo-600 px-3 py-2 text-white opacity-80 shadow-sm sm:max-w-md lg:max-w-lg">
+                <div key={p.tempId} className="mt-1 flex flex-col items-end pr-10">
+                  <div className="max-w-[calc(100vw-7.5rem)] rounded-2xl rounded-br-md bg-indigo-600 px-3 py-2 text-white opacity-80 shadow-sm sm:max-w-md lg:max-w-lg">
                     {p.replyTo && (
                       <QuoteBlock
                         isMine
@@ -244,8 +244,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               ))}
 
               {uploads.map((u) => (
-                <div key={u.tempId} className="mt-1 flex flex-col items-end">
-                  <div className="w-64 max-w-[calc(100vw-6rem)] rounded-2xl rounded-br-md bg-indigo-600 p-3 text-white shadow-sm sm:w-72">
+                <div key={u.tempId} className="mt-1 flex flex-col items-end pr-10">
+                  <div className="w-64 max-w-[calc(100vw-7.5rem)] rounded-2xl rounded-br-md bg-indigo-600 p-3 text-white shadow-sm sm:w-72">
                     <div className="flex items-center gap-3">
                       <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white/15">
                         {u.status === "failed" ? <AlertIcon className="size-5" /> : <FileIcon className="size-5" />}

@@ -3,6 +3,7 @@
 import { memo } from "react";
 import type { ChatMessage, ReplyPreview } from "@/lib/types";
 import { fileExtension, formatBytes, formatTime } from "@/lib/client/format";
+import { Avatar } from "@/components/ui/Avatar";
 import { DownloadIcon, ExternalIcon, FileIcon, ReplyIcon, TrashIcon } from "@/components/ui/icons";
 import { LinkifiedText } from "./LinkifiedText";
 
@@ -142,8 +143,17 @@ function MessageBubbleImpl({
   return (
     <div
       id={`msg-${message.id}`}
-      className={`group flex w-full scroll-mt-24 flex-col ${isMine ? "items-end" : "items-start"} ${showSender ? "mt-3" : "mt-1"}`}
+      className={`group flex w-full scroll-mt-24 items-start gap-2 ${isMine ? "flex-row-reverse" : "flex-row"} ${showSender ? "mt-3" : "mt-1"}`}
     >
+      {/* Avatar on the first message of a group; same-width spacer keeps the rest aligned. */}
+      {showSender ? (
+        <span className={!isMine ? "mt-5" : ""}>
+          <Avatar name={message.senderName} id={message.senderId} />
+        </span>
+      ) : (
+        <span className="w-8 shrink-0" aria-hidden="true" />
+      )}
+      <div className={`flex min-w-0 flex-1 flex-col ${isMine ? "items-end" : "items-start"}`}>
       {showSender && !isMine && (
         <span className="mb-1 px-1 text-xs font-medium text-neutral-500">{message.senderName}</span>
       )}
@@ -151,7 +161,7 @@ function MessageBubbleImpl({
         <div
           onClick={handleBubbleClick}
           className={`relative min-w-0 rounded-2xl px-3 py-2 shadow-sm transition ${
-            hasMedia ? "w-64 max-w-[calc(100vw-6rem)] sm:w-80" : "max-w-[calc(100vw-6rem)] sm:max-w-md lg:max-w-lg"
+            hasMedia ? "w-64 max-w-[calc(100vw-7.5rem)] sm:w-80" : "max-w-[calc(100vw-7.5rem)] sm:max-w-md lg:max-w-lg"
           } ${
             message.isDeleted
               ? "bg-neutral-100 text-neutral-500 ring-1 ring-neutral-200"
@@ -212,6 +222,7 @@ function MessageBubbleImpl({
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
