@@ -30,7 +30,19 @@ function createClient() {
   return new PrismaClient({ adapter: new PrismaMariaDb(poolConfig(url)) });
 }
 
-export const prisma = globalForPrisma.prisma ?? createClient();
+/** One client per process (reused across warm serverless invocations), created on first use. */
+function getClient() {
+  return (globalForPrisma.prisma ??= createClient());
+}
 
-// Reuse one client per process (also across warm serverless invocations).
-globalForPrisma.prisma = prisma;
+/**
+ * Lazy proxy: importing this module never touches the database, so `next build`
+ * succeeds even when DATABASE_URL is only available at runtime.
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getClient();
+    const value = Reflect.get(client, prop, client);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});

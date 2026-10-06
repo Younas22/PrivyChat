@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -7,6 +7,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    // `prisma generate` (run on every install/build) doesn't connect to the database, so a
+    // placeholder is fine when DATABASE_URL isn't available at build time. Migrations need the real URL.
+    url: process.env.DATABASE_URL ?? "mysql://build:build@localhost:3306/build",
   },
 });
