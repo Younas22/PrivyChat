@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum RoomStatus {
+  open
+  closed
+}
+
+enum MessageType {
+  text
+  image
+  video
+  document
+}
+
+model User {
+  id          String   @id @default(cuid())
+  anonymousId String   @unique @db.VarChar(64)
+  displayName String   @db.VarChar(40)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ownedRooms  ChatRoom[]   @relation("RoomOwner")
+  memberships RoomMember[]
+  messages    Message[]
+}
+
+model ChatRoom {
+  id        String     @id @default(cuid())
+  roomCode  String     @unique @db.VarChar(32)
+  name      String     @db.VarChar(80)
+  ownerId   String
+  status    RoomStatus @default(open)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  closedAt  DateTime?
+
+  owner    User         @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members  RoomMember[]
+  messages Message[]
+
+  @@index([ownerId])
+}
+
+model RoomMember {
+  id        String    @id @default(cuid())
+  roomId    String
+  userId    String
+  joinedAt  DateTime  @default(now())
+  removedAt DateTime?
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+  @@index([userId])
+}
+
+model Message {
+  id               String      @id @default(cuid())
+  roomId           String
+  senderId         String
+  content          String?     @db.Text
+  type             MessageType @default(text)
+  replyToMessageId String?
+  fileName         String?     @db.VarChar(255)
+  fileUrl          String?     @db.VarChar(512)
+  fileMimeType     String?     @db.VarChar(127)
+  fileSize         Int?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
+
+  room    ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender  User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo Message?  @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  replies Message[] @relation("MessageReplies")
+
+  @@index([roomId, createdAt])
+  @@index([senderId])
+  @@index([createdAt])
+  @@index([replyToMessageId])
+}
