@@ -12,12 +12,13 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Dialog } from "@/components/ui/Dialog";
 import { Logo } from "@/components/ui/Logo";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
-import { CopyIcon, MenuIcon, MessageIcon, XIcon } from "@/components/ui/icons";
+import { BellIcon, BellOffIcon, CopyIcon, MenuIcon, MessageIcon, XIcon } from "@/components/ui/icons";
 import { Composer, type UploadLimits } from "./Composer";
 import { Lightbox } from "./Lightbox";
 import { MessageList, type MessageListHandle, type PendingText, type PendingUpload } from "./MessageList";
 import { RoomNotice, type NoticeKind } from "./RoomNotice";
 import { ConnectionBadge, RoomPanel } from "./RoomPanel";
+import { useBell } from "./useBell";
 import { useRoomEvents } from "./useRoomEvents";
 
 interface ChatRoomProps {
@@ -218,6 +219,24 @@ function ChatRoomInner({
       handleFatal(err); // network errors are silent here; polling keeps retrying
     }
   }, [base, handleFatal, toast]);
+
+  // ---------- message bell ----------
+
+  const bell = useBell();
+  const ringBell = bell.ring;
+  const lastMessageId = useRef(initialMessages.at(-1)?.id);
+  // Ring when a new latest message from the other person shows up (live event or refresh alike).
+  useEffect(() => {
+    const last = messages.at(-1);
+    if (!last || last.id === lastMessageId.current) return;
+    lastMessageId.current = last.id;
+    if (last.senderId !== viewer.userId && !last.isDeleted) ringBell();
+  }, [messages, viewer.userId, ringBell]);
+
+  const toggleBell = () => {
+    const on = bell.toggle();
+    toast(on ? "Message sound on" : "Message sound off", "success");
+  };
 
   const connection = useRoomEvents(roomCode, status === "active" && !isSaved, realtime, room.channel, {
     onEvent,
@@ -538,6 +557,22 @@ function ChatRoomInner({
               )}
             </div>
           </div>
+          {!isSaved && (
+            <button
+              type="button"
+              onClick={toggleBell}
+              aria-pressed={bell.enabled}
+              aria-label={bell.enabled ? "Turn message sound off" : "Turn message sound on"}
+              title={bell.enabled ? "Sound on" : "Sound off"}
+              className={`grid size-10 shrink-0 place-items-center rounded-xl ring-1 transition ${
+                bell.enabled
+                  ? "text-indigo-600 ring-indigo-200 hover:bg-indigo-50"
+                  : "text-neutral-400 ring-neutral-200 hover:bg-neutral-50"
+              }`}
+            >
+              {bell.enabled ? <BellIcon className="size-5" /> : <BellOffIcon className="size-5" />}
+            </button>
+          )}
           {isSaved ? (
             <Link
               href="/rooms"
