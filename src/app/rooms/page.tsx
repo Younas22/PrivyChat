@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
 import { AccessCodeCard } from "@/components/code/AccessCodeCard";
-import { ArchiveIcon, KeyIcon, MessageIcon } from "@/components/ui/icons";
+import { UnlockRoomsForm } from "@/components/code/UnlockRoomsForm";
+import { isRoomsUnlocked } from "@/lib/server/roomsLock";
+import { ArchiveIcon, KeyIcon, LockIcon, MessageIcon } from "@/components/ui/icons";
 import { APP_NAME } from "@/lib/brand";
 import { getAccessCode, getCurrentUser } from "@/lib/server/identity";
 import { listMyRooms } from "@/lib/server/rooms";
@@ -77,8 +79,32 @@ function Section({ title, rooms }: { title: string; rooms: RoomSummary[] }) {
 }
 
 export default async function MyRoomsPage() {
-  const [rooms, user] = await Promise.all([listMyRooms(), getCurrentUser()]);
-  const accessCode = user ? await getAccessCode(user) : null;
+  const user = await getCurrentUser();
+
+  // Locked by the admin: show nothing until the person enters their own access code.
+  if (user?.roomsLocked && !(await isRoomsUnlocked(user.id))) {
+    return (
+      <div className="flex min-h-dvh flex-col bg-neutral-950">
+        <header className="px-4 py-4 sm:px-6">
+          <Logo dark />
+        </header>
+        <main className="flex flex-1 items-center justify-center px-4 pb-16">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+            <div className="mb-5 grid size-12 place-items-center rounded-2xl bg-neutral-950 text-white">
+              <LockIcon className="size-6" />
+            </div>
+            <h1 className="text-xl font-bold text-neutral-950 sm:text-2xl">My Rooms is private</h1>
+            <p className="mt-1 mb-6 text-sm leading-relaxed text-neutral-500">
+              Enter your access code to see your rooms. It stays open on this browser for 15 minutes.
+            </p>
+            <UnlockRoomsForm />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const [rooms, accessCode] = await Promise.all([listMyRooms(), user ? getAccessCode(user) : null]);
   const open = rooms.filter((r) => r.status === "open");
   const saved = rooms.filter((r) => r.status === "closed");
 

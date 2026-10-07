@@ -6,6 +6,8 @@ import { AppError } from "@/lib/server/errors";
 import { rateLimit } from "@/lib/server/rate-limit";
 import { createRoom, joinRoom, moveToThisBrowser } from "@/lib/server/rooms";
 import { getCurrentUser, normalizeAccessCode, regenerateAccessCode } from "@/lib/server/identity";
+import { unlockRooms } from "@/lib/server/roomsLock";
+import { safeEqual } from "@/lib/server/signed";
 import { displayNameSchema, firstIssue, optionalRoomNameSchema } from "@/lib/validation";
 
 export type FormState = { error?: string } | undefined;
@@ -67,6 +69,7 @@ export async function accessCodeAction(_prev: FormState, formData: FormData): Pr
     // Opens the chats here and signs out the person's other devices.
     const user = await moveToThisBrowser(code);
     if (!user) return { error: "No chats found for this code. Check it and try again." };
+    await unlockRooms(user.id); // they just proved the code, so a locked My Rooms opens too
   } catch (err) {
     return friendly(err);
   }
@@ -83,4 +86,21 @@ export async function regenerateCodeAction(): Promise<{ code?: string; error?: s
   } catch (err) {
     return { error: friendly(err)?.error };
   }
+}
+
+/** Opens a locked My Rooms for 15 minutes after the person enters their own access code. */
+export async function unlockRoomsAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { error: "Open one of your chats first." };
+    rateLimit(`unlock:${user.id}`, 8, 10 * 60_000);
+    const code = normalizeAccessCode(String(formData.get("code") ?? ""));
+    if (!code || !user.accessCode || !safeEqual(code, user.accessCode)) {
+      return { error: "That's not your access code." };
+    }
+    await unlockRooms(user.id);
+  } catch (err) {
+    return friendly(err);
+  }
+  redirect("/rooms");
 }

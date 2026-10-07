@@ -123,6 +123,10 @@ ALTER TABLE `User` ADD COLUMN `accessCode` VARCHAR(24) NULL;
 -- CreateIndex
 CREATE UNIQUE INDEX `User_accessCode_key` ON `User`(`accessCode`);
 
+-- Migration: 20261007090000_user_rooms_locked
+-- AlterTable
+ALTER TABLE `User` ADD COLUMN `roomsLocked` BOOLEAN NOT NULL DEFAULT false;
+
 
 -- Prisma migration history
 CREATE TABLE IF NOT EXISTS `_prisma_migrations` (
@@ -138,16 +142,19 @@ CREATE TABLE IF NOT EXISTS `_prisma_migrations` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('d3af5a26-2f39-48d0-bdc3-5cff330cafa8', 'c0283a28a64265ea8f30ea850fd9a1026046ce23fb8050235c324b062223bc9e', NOW(3), '20261006083044_init', NULL, NULL, NOW(3), 1);
+VALUES ('e6735139-d9f4-418d-9d73-13e5e4997942', 'c0283a28a64265ea8f30ea850fd9a1026046ce23fb8050235c324b062223bc9e', NOW(3), '20261006083044_init', NULL, NULL, NOW(3), 1);
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('c590c279-c3cc-45fb-8688-be1bfb6e3063', '5a4c19e480ab573947fd9660492edf85aa917a443bd30335d172b6f33e9b8fb7', NOW(3), '20261006182934_message_reactions', NULL, NULL, NOW(3), 1);
+VALUES ('55ce0dd6-a4fd-45af-90d9-187804cdf699', '5a4c19e480ab573947fd9660492edf85aa917a443bd30335d172b6f33e9b8fb7', NOW(3), '20261006182934_message_reactions', NULL, NULL, NOW(3), 1);
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('894b07e4-1088-4e30-85d4-d19290beec2a', '6d66d9fd164ad8a9b79d4833cd9551480ccae6c90067ab89f95089bac295b21f', NOW(3), '20261006200803_audio_messages', NULL, NULL, NOW(3), 1);
+VALUES ('ddffcc87-0002-46bd-9d5f-8a563c91ff9b', '6d66d9fd164ad8a9b79d4833cd9551480ccae6c90067ab89f95089bac295b21f', NOW(3), '20261006200803_audio_messages', NULL, NULL, NOW(3), 1);
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('ecc46ffb-975b-4f95-bc99-638d1e2347ca', '9b926fe357523ca990395f6f7e1577f1ba22fe11261f51dd136658d050893a2f', NOW(3), '20261006203645_audio_waveform', NULL, NULL, NOW(3), 1);
+VALUES ('49136e7d-7356-4233-8605-9bebb4c08d28', '9b926fe357523ca990395f6f7e1577f1ba22fe11261f51dd136658d050893a2f', NOW(3), '20261006203645_audio_waveform', NULL, NULL, NOW(3), 1);
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
-VALUES ('a518e4bd-bb77-44a4-8af9-850c1142c1df', '5f7b81992507d47cc067708c34158662531c19a552f4ee4b06f4cca0f73270bf', NOW(3), '20261006213000_user_access_code', NULL, NULL, NOW(3), 1);
+VALUES ('4381348b-bc0e-4ea9-80dc-6495f3609862', '5f7b81992507d47cc067708c34158662531c19a552f4ee4b06f4cca0f73270bf', NOW(3), '20261006213000_user_access_code', NULL, NULL, NOW(3), 1);
+
+INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
+VALUES ('c9841f97-d311-486c-b6a3-68df83b4f090', 'a7a3c089b13418400ab175bd4dbe2aa821b0ec25c1180eed796a8fd0206d4256', NOW(3), '20261007090000_user_rooms_locked', NULL, NULL, NOW(3), 1);

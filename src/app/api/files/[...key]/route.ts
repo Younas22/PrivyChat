@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AppError, errorResponse } from "@/lib/server/errors";
+import { isAdmin } from "@/lib/server/admin";
 import { authorizeFileAccess, fileUrlForKey } from "@/lib/server/rooms";
 import { getStorage } from "@/lib/storage";
 
@@ -33,7 +34,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ key: str
     const key = (await params).key.join("/");
     const match = KEY_PATTERN.exec(key);
     if (!match) throw notFound();
-    await authorizeFileAccess(match[1]);
+    // Room members only, plus the signed-in admin (read-only access to every room).
+    if (!(await isAdmin())) await authorizeFileAccess(match[1]);
 
     const message = await prisma.message.findFirst({
       where: { roomId: match[1], fileUrl: fileUrlForKey(key), deletedAt: null },

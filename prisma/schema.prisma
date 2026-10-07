@@ -26,6 +26,8 @@ model User {
   displayName String   @db.VarChar(40)
   /// Personal access code (stored without dashes) to open your chats in another browser.
   accessCode  String?  @unique @db.VarChar(24)
+  /// Set by the admin: My Rooms asks for this person's access code before showing the list.
+  roomsLocked Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
