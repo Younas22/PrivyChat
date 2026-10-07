@@ -33,7 +33,8 @@ const NOTICES: Record<NoticeKind, { title: string; text: string; icon: ReactNode
   },
 };
 
-export function RoomNotice({ kind }: { kind: NoticeKind }) {
+/** `codeNext`: a room link to return to after entering an access code (shown for a full room). */
+export function RoomNotice({ kind, codeNext }: { kind: NoticeKind; codeNext?: string }) {
   const n = NOTICES[kind];
   return (
     <div className="flex min-h-dvh flex-col bg-white">
@@ -53,6 +54,14 @@ export function RoomNotice({ kind }: { kind: NoticeKind }) {
           >
             Create a new room
           </Link>
+          {codeNext && (
+            <p className="mt-6 text-sm text-neutral-500">
+              Already in this room on another device?{" "}
+              <Link href={`/code?next=${encodeURIComponent(codeNext)}`} className="font-semibold text-indigo-600 hover:text-indigo-500">
+                Use your access code
+              </Link>
+            </p>
+          )}
         </div>
       </main>
     </div>

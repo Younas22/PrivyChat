@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 import { AppError } from "@/lib/server/errors";
 import { rateLimit } from "@/lib/server/rate-limit";
 import { createRoom, joinRoom } from "@/lib/server/rooms";
+import {
+  getCurrentUser,
+  normalizeAccessCode,
+  regenerateAccessCode,
+  signInWithAccessCode,
+} from "@/lib/server/identity";
 import { displayNameSchema, firstIssue, optionalRoomNameSchema } from "@/lib/validation";
 
 export type FormState = { error?: string } | undefined;
@@ -49,4 +55,36 @@ export async function joinRoomAction(_prev: FormState, formData: FormData): Prom
     return friendly(err);
   }
   redirect(`/chat/${roomCode}`);
+}
+
+// ---------- Access codes ----------
+
+const NEXT_PATTERN = /^\/chat\/[A-Za-z0-9]{6,32}$/;
+
+/** Opens this browser as the person who owns the code, then shows their rooms (or the room link). */
+export async function accessCodeAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const code = String(formData.get("code") ?? "");
+  const next = String(formData.get("next") ?? "");
+  try {
+    // Codes are long and random; this stops anyone from guessing them by trying many.
+    rateLimit(`code:${await clientKey()}`, 10, 10 * 60_000);
+    if (!normalizeAccessCode(code)) return { error: "That doesn't look like an access code. It has 16 letters and numbers." };
+    const user = await signInWithAccessCode(code);
+    if (!user) return { error: "No chats found for this code. Check it and try again." };
+  } catch (err) {
+    return friendly(err);
+  }
+  redirect(NEXT_PATTERN.test(next) ? next : "/rooms");
+}
+
+/** Replaces the current user's access code; the old one stops working. */
+export async function regenerateCodeAction(): Promise<{ code?: string; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { error: "Open one of your chats first." };
+    rateLimit(`newcode:${user.id}`, 5, 10 * 60_000);
+    return { code: await regenerateAccessCode(user.id) };
+  } catch (err) {
+    return { error: friendly(err)?.error };
+  }
 }

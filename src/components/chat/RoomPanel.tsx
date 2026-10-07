@@ -6,6 +6,7 @@ import { BUBBLE_COLORS, type BubbleColorId } from "@/lib/client/bubbleColors";
 import type { RoomInfo, RoomMemberInfo, Viewer } from "@/lib/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { TimeZonePicker } from "./TimeZonePicker";
+import { AccessCodeCard } from "@/components/code/AccessCodeCard";
 import {
   ArchiveIcon,
   CheckIcon,
@@ -29,6 +30,8 @@ interface RoomPanelProps {
   timeZonePreference: string;
   detectedTimeZone: string;
   onTimeZone: (zone: string) => void;
+  accessCode: string;
+  onCodeNotice: (text: string, kind: "success" | "error") => void;
   /** Color of the viewer's own message bubbles (their personal choice). */
   bubbleColorId: BubbleColorId;
   onBubbleColor: (id: BubbleColorId) => void;
@@ -171,6 +174,8 @@ export function RoomPanel(props: RoomPanelProps) {
         detected={props.detectedTimeZone}
         onChange={props.onTimeZone}
       />
+
+      <AccessCodeCard code={props.accessCode} tone="dark" onNotice={props.onCodeNotice} />
 
       {!saved && (
       <div className="space-y-1">

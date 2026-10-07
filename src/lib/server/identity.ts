@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 
 export const IDENTITY_COOKIE = "talkroom_uid";
 const ONE_YEAR = 60 * 60 * 24 * 365;
@@ -13,11 +14,7 @@ export async function readAnonymousId(): Promise<string | null> {
   return value && ID_PATTERN.test(value) ? value : null;
 }
 
-/** Returns the existing anonymous ID or issues a new one. Only callable from Server Actions / Route Handlers. */
-export async function ensureAnonymousId(): Promise<string> {
-  const existing = await readAnonymousId();
-  if (existing) return existing;
-  const id = randomBytes(24).toString("base64url");
+async function setIdentityCookie(id: string) {
   (await cookies()).set(IDENTITY_COOKIE, id, {
     httpOnly: true,
     sameSite: "lax",
@@ -25,6 +22,14 @@ export async function ensureAnonymousId(): Promise<string> {
     path: "/",
     maxAge: ONE_YEAR,
   });
+}
+
+/** Returns the existing anonymous ID or issues a new one. Only callable from Server Actions / Route Handlers. */
+export async function ensureAnonymousId(): Promise<string> {
+  const existing = await readAnonymousId();
+  if (existing) return existing;
+  const id = randomBytes(24).toString("base64url");
+  await setIdentityCookie(id);
   return id;
 }
 
@@ -42,4 +47,63 @@ export async function upsertCurrentUser(displayName: string) {
     create: { anonymousId, displayName },
     update: { displayName },
   });
+}
+
+// ---------- Access codes (open your chats in another browser) ----------
+
+// Crockford base32: no I, L, O, U, so codes are easy to read and type.
+const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const CODE_LENGTH = 16; // 16 × 5 bits = 80 bits of randomness
+
+function randomCode() {
+  let code = "";
+  for (const byte of randomBytes(CODE_LENGTH)) code += CODE_ALPHABET[byte & 31];
+  return code;
+}
+
+/** "K7QM2XPA9DFRH3TN" → "K7QM-2XPA-9DFR-H3TN" */
+export function formatAccessCode(code: string) {
+  return code.match(/.{1,4}/g)?.join("-") ?? code;
+}
+
+/** Accepts what people type: any case, spaces/dashes, and O/I/L typed for 0/1. */
+export function normalizeAccessCode(input: string) {
+  const cleaned = input.toUpperCase().replace(/[\s-]/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
+  return new RegExp(`^[${CODE_ALPHABET}]{${CODE_LENGTH}}$`).test(cleaned) ? cleaned : null;
+}
+
+async function assignNewCode(userId: string) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const updated = await prisma.user.update({ where: { id: userId }, data: { accessCode: randomCode() } });
+      return updated.accessCode!;
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") continue; // collision
+      throw err;
+    }
+  }
+  throw new Error("Could not allocate an access code");
+}
+
+/** The user's access code, created the first time it's needed. Returned formatted. */
+export async function getAccessCode(user: { id: string; accessCode: string | null }) {
+  return formatAccessCode(user.accessCode ?? (await assignNewCode(user.id)));
+}
+
+/** Replaces the user's code (the old one stops working). Returned formatted. */
+export async function regenerateAccessCode(userId: string) {
+  return formatAccessCode(await assignNewCode(userId));
+}
+
+/**
+ * Signs this browser in as the owner of `code` (sets the identity cookie).
+ * Returns the user, or null if the code doesn't match anyone.
+ */
+export async function signInWithAccessCode(input: string) {
+  const code = normalizeAccessCode(input);
+  if (!code) return null;
+  const user = await prisma.user.findUnique({ where: { accessCode: code } });
+  if (!user) return null;
+  await setIdentityCookie(user.anonymousId);
+  return user;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { joinRoomAction, type FormState } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
@@ -58,6 +59,15 @@ export function JoinRoomForm({ roomCode, roomName, ownerName, defaultName }: Joi
             </Button>
           </form>
           <p className="mt-4 text-center text-xs text-neutral-400">Each room has space for two people.</p>
+          <p className="mt-2 text-center text-xs text-neutral-500">
+            Already in this room on another device?{" "}
+            <Link
+              href={`/code?next=${encodeURIComponent(`/chat/${roomCode}`)}`}
+              className="font-semibold text-indigo-600 hover:text-indigo-500"
+            >
+              Use your access code
+            </Link>
+          </p>
         </div>
       </main>
     </div>

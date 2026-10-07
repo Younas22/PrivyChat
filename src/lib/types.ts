@@ -99,8 +99,10 @@ export interface MessagesPage {
   hasMore: boolean;
 }
 
-export interface OwnedRoomSummary {
+export interface RoomSummary {
   roomCode: string;
+  /** true if I created the room; false if I joined someone else's. */
+  isOwner: boolean;
   name: string;
   status: "open" | "closed";
   createdAt: string;

@@ -246,3 +246,10 @@ export const LogOutIcon = (p: IconProps) => (
     <line x1="21" y1="12" x2="9" y2="12" />
   </Icon>
 );
+export const KeyIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="7.5" cy="15.5" r="5.5" />
+    <path d="m21 2-9.6 9.6" />
+    <path d="m15.5 7.5 3 3L22 7l-3-3" />
+  </Icon>
+);

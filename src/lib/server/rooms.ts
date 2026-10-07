@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
-import { REACTION_EMOJIS, type ChatMessage, type MessagesPage, type OwnedRoomSummary, type ReactionGroup } from "@/lib/types";
+import { REACTION_EMOJIS, type ChatMessage, type MessagesPage, type RoomSummary, type ReactionGroup } from "@/lib/types";
 import { getStorage } from "@/lib/storage";
 import { Errors } from "./errors";
 import { getCurrentUser, upsertCurrentUser } from "./identity";
@@ -367,11 +367,17 @@ export async function authorizeFileAccess(roomId: string) {
 const TYPE_PREVIEW = { image: "📷 Photo", video: "🎬 Video", document: "📄 Document", audio: "🎤 Voice message", text: "" } as const;
 
 /** Rooms created by the current browser's user, newest activity first. */
-export async function listOwnedRooms(): Promise<OwnedRoomSummary[]> {
+/**
+ * Rooms for the current browser's user: ones they created (open or saved) and open rooms
+ * they joined. Saved rooms are only listed for their owner, who is the only one who can open them.
+ */
+export async function listMyRooms(): Promise<RoomSummary[]> {
   const user = await getCurrentUser();
   if (!user) return [];
   const rooms = await prisma.chatRoom.findMany({
-    where: { ownerId: user.id },
+    where: {
+      OR: [{ ownerId: user.id }, { status: "open", members: { some: { userId: user.id, removedAt: null } } }],
+    },
     include: {
       members: { where: { removedAt: null }, include: { user: { select: { displayName: true } } } },
       messages: {
@@ -388,6 +394,7 @@ export async function listOwnedRooms(): Promise<OwnedRoomSummary[]> {
       const last = r.messages[0];
       return {
         roomCode: r.roomCode,
+        isOwner: r.ownerId === user.id,
         name: r.name,
         status: r.status,
         createdAt: r.createdAt.toISOString(),

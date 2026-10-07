@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CreateRoomForm } from "@/components/landing/CreateRoomForm";
 import { Logo } from "@/components/ui/Logo";
-import { ArchiveIcon, LinkIcon, MessageIcon, UsersIcon } from "@/components/ui/icons";
+import { ArchiveIcon, KeyIcon, LinkIcon, MessageIcon, UsersIcon } from "@/components/ui/icons";
 import { APP_NAME } from "@/lib/brand";
 
 const STEPS = [
@@ -16,12 +16,21 @@ export default function HomePage() {
     <div className="flex min-h-dvh flex-col bg-white">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <Logo />
-        <Link
-          href="/rooms"
-          className="inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold text-neutral-800 ring-1 ring-neutral-200 hover:bg-neutral-50"
-        >
-          My Rooms
-        </Link>
+        <nav className="flex items-center gap-2">
+          <Link
+            href="/code"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-neutral-950 px-3 text-sm font-semibold text-white hover:bg-neutral-800 sm:px-4"
+          >
+            <KeyIcon className="size-4" />
+            Use code
+          </Link>
+          <Link
+            href="/rooms"
+            className="inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold text-neutral-800 ring-1 ring-neutral-200 hover:bg-neutral-50 sm:px-4"
+          >
+            My Rooms
+          </Link>
+        </nav>
       </header>
 
       <main className="flex-1">

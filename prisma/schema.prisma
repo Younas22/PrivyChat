@@ -24,6 +24,8 @@ model User {
   id          String   @id @default(cuid())
   anonymousId String   @unique @db.VarChar(64)
   displayName String   @db.VarChar(40)
+  /// Personal access code (stored without dashes) to open your chats in another browser.
+  accessCode  String?  @unique @db.VarChar(24)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

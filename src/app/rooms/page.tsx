@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
-import { ArchiveIcon, MessageIcon } from "@/components/ui/icons";
+import { AccessCodeCard } from "@/components/code/AccessCodeCard";
+import { ArchiveIcon, KeyIcon, MessageIcon } from "@/components/ui/icons";
 import { APP_NAME } from "@/lib/brand";
-import { listOwnedRooms } from "@/lib/server/rooms";
-import type { OwnedRoomSummary } from "@/lib/types";
+import { getAccessCode, getCurrentUser } from "@/lib/server/identity";
+import { listMyRooms } from "@/lib/server/rooms";
+import type { RoomSummary } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: `My Rooms · ${APP_NAME}`,
@@ -15,7 +17,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function RoomRow({ room }: { room: OwnedRoomSummary }) {
+function RoomRow({ room }: { room: RoomSummary }) {
   const saved = room.status === "closed";
   const withWhom = room.memberNames.length ? `with ${room.memberNames.join(", ")}` : "Waiting for a friend";
   return (
@@ -41,6 +43,11 @@ function RoomRow({ room }: { room: OwnedRoomSummary }) {
             >
               {saved ? "Saved" : "Open"}
             </span>
+            {!room.isOwner && (
+              <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                Member
+              </span>
+            )}
           </div>
           <p className="truncate text-sm text-neutral-500">{room.lastMessage ?? "No messages yet"}</p>
           <p className="mt-0.5 text-xs text-neutral-400">
@@ -53,7 +60,7 @@ function RoomRow({ room }: { room: OwnedRoomSummary }) {
   );
 }
 
-function Section({ title, rooms }: { title: string; rooms: OwnedRoomSummary[] }) {
+function Section({ title, rooms }: { title: string; rooms: RoomSummary[] }) {
   if (!rooms.length) return null;
   return (
     <section className="mt-8">
@@ -70,7 +77,8 @@ function Section({ title, rooms }: { title: string; rooms: OwnedRoomSummary[] })
 }
 
 export default async function MyRoomsPage() {
-  const rooms = await listOwnedRooms();
+  const [rooms, user] = await Promise.all([listMyRooms(), getCurrentUser()]);
+  const accessCode = user ? await getAccessCode(user) : null;
   const open = rooms.filter((r) => r.status === "open");
   const saved = rooms.filter((r) => r.status === "closed");
 
@@ -89,8 +97,16 @@ export default async function MyRoomsPage() {
       <main className="mx-auto w-full max-w-3xl flex-1 px-1 pb-16 sm:px-3">
         <div className="px-3 pt-4 sm:px-4">
           <h1 className="text-2xl font-bold text-neutral-950 sm:text-3xl">My Rooms</h1>
-          <p className="mt-1 text-sm text-neutral-500">Rooms you created on this browser. Saved rooms are read-only.</p>
+          <p className="mt-1 text-sm text-neutral-500">
+            Rooms you created or joined. Saved rooms are read-only and only shown to their owner.
+          </p>
         </div>
+
+        {accessCode && (
+          <div className="mx-3 mt-6 max-w-md sm:mx-4">
+            <AccessCodeCard code={accessCode} tone="light" />
+          </div>
+        )}
 
         {rooms.length === 0 ? (
           <div className="mx-3 mt-10 flex flex-col items-center rounded-3xl bg-neutral-50 px-6 py-14 text-center sm:mx-4">
@@ -99,14 +115,22 @@ export default async function MyRoomsPage() {
             </span>
             <h2 className="font-semibold text-neutral-900">No rooms yet</h2>
             <p className="mt-1 max-w-xs text-sm text-neutral-500">
-              Rooms you create will show up here — including the ones you save.
+              Rooms you create or join will show up here. Used another browser before? Enter your access code.
             </p>
-            <Link
-              href="/"
-              className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500"
-            >
-              Create a room
-            </Link>
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              <Link
+                href="/code"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white hover:bg-neutral-800"
+              >
+                <KeyIcon className="size-4" /> Use code
+              </Link>
+              <Link
+                href="/"
+                className="inline-flex min-h-11 items-center rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500"
+              >
+                Create a room
+              </Link>
+            </div>
           </div>
         ) : (
           <>

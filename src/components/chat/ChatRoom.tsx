@@ -52,6 +52,8 @@ interface ChatRoomProps {
   viewer: Viewer;
   initialMessages: ChatMessage[];
   initialHasMore: boolean;
+  /** This person's access code (opens their chats on another browser). */
+  accessCode: string;
   limits: UploadLimits;
   realtime: RealtimeConfig;
   /** Access level for direct-to-storage uploads, or null to POST files to our own route. */
@@ -101,6 +103,7 @@ function ChatRoomInner({
   viewer: initialViewer,
   initialMessages,
   initialHasMore,
+  accessCode,
   limits,
   realtime,
   directUploads,
@@ -599,6 +602,8 @@ function ChatRoomInner({
         tz.setPreference(zone);
         toast(zone === "auto" ? "Time zone: automatic" : `Time zone: ${zone.replace(/_/g, " ")}`, "success");
       }}
+      accessCode={accessCode}
+      onCodeNotice={(text, kind) => toast(text, kind)}
       bubbleColorId={myBubble.id}
       onBubbleColor={(id) => {
         setBubbleColorId(id);

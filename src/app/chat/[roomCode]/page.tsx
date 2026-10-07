@@ -3,6 +3,7 @@ import { APP_NAME } from "@/lib/brand";
 import { ChatRoom } from "@/components/chat/ChatRoom";
 import { JoinRoomForm } from "@/components/chat/JoinRoomForm";
 import { RoomNotice } from "@/components/chat/RoomNotice";
+import { getAccessCode } from "@/lib/server/identity";
 import { listRoomMessages, resolveRoomAccess } from "@/lib/server/rooms";
 import { toRoomInfo } from "@/lib/server/serialize";
 import { pusherConfig } from "@/lib/server/realtime";
@@ -23,7 +24,7 @@ export default async function ChatPage({ params }: PageProps<"/chat/[roomCode]">
     case "closed":
     case "full":
     case "removed":
-      return <RoomNotice kind={access.state} />;
+      return <RoomNotice kind={access.state} codeNext={access.state === "full" ? `/chat/${roomCode}` : undefined} />;
     case "can_join": {
       const owner = access.room.members.find((m) => m.userId === access.room.ownerId);
       return (
@@ -38,13 +39,17 @@ export default async function ChatPage({ params }: PageProps<"/chat/[roomCode]">
     case "saved":
     case "member": {
       const { room, user } = access;
-      const page = await listRoomMessages(room.id); // access already checked above
+      const [page, accessCode] = await Promise.all([
+        listRoomMessages(room.id), // access already checked above
+        getAccessCode(user),
+      ]);
       const pusher = pusherConfig();
       return (
         <ChatRoom
           initialRoom={toRoomInfo(room)}
           viewer={{ userId: user.id, displayName: user.displayName, isOwner: room.ownerId === user.id }}
           initialMessages={page.messages}
+          accessCode={accessCode}
           initialHasMore={page.hasMore}
           limits={{
             image: maxSizeFor("image"),
