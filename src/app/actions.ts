@@ -4,13 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppError } from "@/lib/server/errors";
 import { rateLimit } from "@/lib/server/rate-limit";
-import { createRoom, joinRoom } from "@/lib/server/rooms";
-import {
-  getCurrentUser,
-  normalizeAccessCode,
-  regenerateAccessCode,
-  signInWithAccessCode,
-} from "@/lib/server/identity";
+import { createRoom, joinRoom, moveToThisBrowser } from "@/lib/server/rooms";
+import { getCurrentUser, normalizeAccessCode, regenerateAccessCode } from "@/lib/server/identity";
 import { displayNameSchema, firstIssue, optionalRoomNameSchema } from "@/lib/validation";
 
 export type FormState = { error?: string } | undefined;
@@ -69,7 +64,8 @@ export async function accessCodeAction(_prev: FormState, formData: FormData): Pr
     // Codes are long and random; this stops anyone from guessing them by trying many.
     rateLimit(`code:${await clientKey()}`, 10, 10 * 60_000);
     if (!normalizeAccessCode(code)) return { error: "That doesn't look like an access code. It has 16 letters and numbers." };
-    const user = await signInWithAccessCode(code);
+    // Opens the chats here and signs out the person's other devices.
+    const user = await moveToThisBrowser(code);
     if (!user) return { error: "No chats found for this code. Check it and try again." };
   } catch (err) {
     return friendly(err);

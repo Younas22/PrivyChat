@@ -72,7 +72,8 @@ export const roomInclude = {
   members: {
     where: { removedAt: null },
     orderBy: { joinedAt: "asc" },
-    include: { user: { select: { id: true, displayName: true } } },
+    // anonymousId is server-only: it keys the live channel (see roomChannel) and is never serialized.
+    include: { user: { select: { id: true, displayName: true, anonymousId: true } } },
   },
 } satisfies Prisma.ChatRoomInclude;
 

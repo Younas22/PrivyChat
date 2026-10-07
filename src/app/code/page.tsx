@@ -27,7 +27,8 @@ export default async function CodePage({ searchParams }: PageProps<"/code">) {
           <h1 className="text-xl font-bold text-neutral-950 sm:text-2xl">Open your chats here</h1>
           <p className="mt-1 mb-6 text-sm leading-relaxed text-neutral-500">
             Enter the access code shown in your chat&apos;s side panel (or on My Rooms) on the device you used before.
-            This browser will then open your rooms and room links.
+            This browser will then open your rooms and room links, and your other device is signed out (one device
+            at a time).
           </p>
           <CodeForm next={next} />
           <p className="mt-5 text-center text-xs text-neutral-400">

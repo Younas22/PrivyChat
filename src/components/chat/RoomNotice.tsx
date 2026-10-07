@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/ui/Logo";
-import { AlertIcon, ArchiveIcon, UserMinusIcon, UsersIcon } from "@/components/ui/icons";
+import { AlertIcon, ArchiveIcon, KeyIcon, UserMinusIcon, UsersIcon } from "@/components/ui/icons";
 
-export type NoticeKind = "closed" | "full" | "not_found" | "removed" | "deleted";
+export type NoticeKind = "closed" | "full" | "not_found" | "removed" | "deleted" | "moved";
 
 const NOTICES: Record<NoticeKind, { title: string; text: string; icon: ReactNode }> = {
   closed: {
@@ -25,6 +25,11 @@ const NOTICES: Record<NoticeKind, { title: string; text: string; icon: ReactNode
     title: "You're no longer in this room.",
     text: "You left this chat or the owner removed you, so you can no longer read or send messages here.",
     icon: <UserMinusIcon className="size-7" />,
+  },
+  moved: {
+    title: "This chat is now open on another device.",
+    text: "Your access code was used on another browser, so this one was signed out. Enter your code here to bring your chats back (the other device will then be signed out).",
+    icon: <KeyIcon className="size-7" />,
   },
   deleted: {
     title: "This chat room was deleted.",
@@ -48,13 +53,23 @@ export function RoomNotice({ kind, codeNext }: { kind: NoticeKind; codeNext?: st
           </div>
           <h1 className="text-xl font-bold text-neutral-950 sm:text-2xl">{n.title}</h1>
           <p className="mt-2 text-sm leading-relaxed text-neutral-600 sm:text-base">{n.text}</p>
-          <Link
-            href="/"
-            className="mt-7 inline-flex min-h-11 items-center justify-center rounded-xl bg-indigo-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
-          >
-            Create a new room
-          </Link>
-          {codeNext && (
+          {kind === "moved" ? (
+            // Signed out by your own code elsewhere: the only sensible action is to bring it back.
+            <Link
+              href={codeNext ? `/code?next=${encodeURIComponent(codeNext)}` : "/code"}
+              className="mt-7 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+            >
+              <KeyIcon className="size-4" /> Use my code here
+            </Link>
+          ) : (
+            <Link
+              href="/"
+              className="mt-7 inline-flex min-h-11 items-center justify-center rounded-xl bg-indigo-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+            >
+              Create a new room
+            </Link>
+          )}
+          {codeNext && kind !== "moved" && (
             <p className="mt-6 text-sm text-neutral-500">
               Already in this room on another device?{" "}
               <Link href={`/code?next=${encodeURIComponent(codeNext)}`} className="font-semibold text-indigo-600 hover:text-indigo-500">

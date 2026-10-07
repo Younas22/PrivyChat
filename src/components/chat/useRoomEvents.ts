@@ -19,6 +19,8 @@ interface Handlers {
  *   triggers a refresh for oversized events). The channel changes when the member set changes.
  * - SSE (local single server): full events from the in-process bus.
  * Falls back to polling whenever the live connection is down.
+ * After "room:updated" it also re-checks access: members or devices may have changed (e.g. this
+ * person opened the chat on another browser with their code, which signs this one out).
  */
 export function useRoomEvents(
   roomCode: string,
@@ -76,7 +78,10 @@ export function useRoomEvents(
           startPolling();
           ref.current.onResync(); // learns why (closed / removed / deleted)
         });
-        channel.bind("event", (event: RoomEvent) => ref.current.onEvent(event));
+        channel.bind("event", (event: RoomEvent) => {
+          ref.current.onEvent(event);
+          if (event.type === "room:updated") scheduleResync();
+        });
         channel.bind("sync", scheduleResync);
         client.connection.bind("state_change", ({ current }: { current: string }) => {
           if (current === "connected" && channel.subscribed) goLive();
@@ -97,7 +102,9 @@ export function useRoomEvents(
         es.onopen = goLive;
         es.onmessage = (e) => {
           try {
-            ref.current.onEvent(JSON.parse(e.data) as RoomEvent);
+            const event = JSON.parse(e.data) as RoomEvent;
+            ref.current.onEvent(event);
+            if (event.type === "room:updated") scheduleResync();
           } catch {
             /* ignore malformed frames */
           }

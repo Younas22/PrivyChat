@@ -6,7 +6,11 @@ import type { RoomEvent } from "@/lib/types";
 type Listener = (event: RoomEvent) => void;
 
 /** A room plus the members currently subscribed to its live channel. */
-export type RoomRef = { id: string; roomCode: string; members: { userId: string }[] };
+export type RoomRef = {
+  id: string;
+  roomCode: string;
+  members: { userId: string; user: { anonymousId: string } }[];
+};
 
 const globalForBus = globalThis as unknown as { roomBus?: Map<string, Set<Listener>> };
 const channels = (globalForBus.roomBus ??= new Map<string, Set<Listener>>());
@@ -25,15 +29,15 @@ export function pusherConfig() {
 export const ROOM_CHANNEL_PATTERN = /^private-room-([A-Za-z0-9]{6,32})-([a-f0-9]{20})$/;
 
 /**
- * Private channel name for a room's CURRENT member set. When someone is removed (or joins),
- * the channel changes; a removed member can't be authorized for the new one, so they stop
- * receiving messages even if they keep their old subscription open.
+ * Private channel name for a room's CURRENT members and the browsers they use. It changes when
+ * someone is removed, joins, or moves to another device with their access code, so a removed
+ * member or a signed-out device can't be authorized for the new channel and stops receiving.
  */
 export function roomChannel(room: RoomRef): string | null {
   const cfg = pusherConfig();
   if (!cfg) return null;
   const memberSet = room.members
-    .map((m) => m.userId)
+    .map((m) => `${m.userId}:${m.user.anonymousId}`)
     .sort()
     .join(",");
   const token = createHmac("sha256", cfg.secret).update(`${room.id}:${memberSet}`).digest("hex").slice(0, 20);

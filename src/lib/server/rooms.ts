@@ -4,7 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { REACTION_EMOJIS, type ChatMessage, type MessagesPage, type RoomSummary, type ReactionGroup } from "@/lib/types";
 import { getStorage } from "@/lib/storage";
 import { Errors } from "./errors";
-import { getCurrentUser, upsertCurrentUser } from "./identity";
+import { findUserByAccessCode, getCurrentUser, newAnonymousId, setIdentityCookie, upsertCurrentUser } from "./identity";
 import { publish, type RoomRef } from "./realtime";
 import { generateRoomCode, ROOM_CODE_PATTERN } from "./room-code";
 import { groupReactions, messageInclude, roomInclude, toChatMessage, toMemberInfo, toRoomInfo } from "./serialize";
@@ -295,6 +295,34 @@ export async function deleteMessage(roomCode: string, messageId: string) {
     if (key) await getStorage().delete(key).catch((err) => console.error("Failed to delete file", err));
   }
   await publish(room, { type: "message:deleted", messageId: message.id });
+}
+
+// ---------- Moving to another device ----------
+
+/**
+ * Opens this browser as the owner of an access code and signs out every other device:
+ * the person gets a fresh browser identity, so the old cookie no longer matches anyone.
+ * Their open rooms are told, so live channels switch over and the old device is cut off.
+ * Returns the user, or null if the code doesn't match anyone.
+ */
+export async function moveToThisBrowser(codeInput: string) {
+  const user = await findUserByAccessCode(codeInput);
+  if (!user) return null;
+
+  const openRooms = await prisma.chatRoom.findMany({
+    where: { status: "open", members: { some: { userId: user.id, removedAt: null } } },
+    include: roomInclude,
+  });
+  const anonymousId = newAnonymousId();
+  await prisma.user.update({ where: { id: user.id }, data: { anonymousId } });
+  await setIdentityCookie(anonymousId);
+
+  for (const before of openRooms) {
+    const after = await prisma.chatRoom.findUnique({ where: { id: before.id }, include: roomInclude });
+    // Sent on the OLD channel, so both the other member and the signed-out device hear it.
+    if (after) await publish(before, { type: "room:updated", room: toRoomInfo(after) });
+  }
+  return user;
 }
 
 // ---------- Reactions ----------

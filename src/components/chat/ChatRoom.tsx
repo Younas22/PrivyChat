@@ -167,7 +167,8 @@ function ChatRoomInner({
     if (!(err instanceof ApiError)) return false;
     if (err.code === "room_closed") onRoomClosed();
     else if (err.code === "room_not_found") setStatus("deleted");
-    else if (["member_removed", "not_member", "no_identity"].includes(err.code)) setStatus("removed");
+    else if (err.code === "no_identity") setStatus("moved"); // this browser was signed out by an access code
+    else if (["member_removed", "not_member"].includes(err.code)) setStatus("removed");
     else return false;
     return true;
   }, [onRoomClosed]);
@@ -204,7 +205,7 @@ function ChatRoomInner({
           setMessages((list) => list.map((m) => (m.id === event.messageId ? { ...m, reactions: event.reactions } : m)));
           break;
         case "room:updated":
-          setRoom(event.room);
+          setRoom(event.room); // useRoomEvents also re-checks access after this event
           break;
         case "member:joined":
           setRoom(event.room);
@@ -589,7 +590,9 @@ function ChatRoomInner({
   const onImageClick = useCallback((src: string, name: string) => setLightbox({ src, name }), []);
 
   if (exiting) return <div className="h-dvh bg-white" aria-hidden="true" />;
-  if (status !== "active") return <RoomNotice kind={status} />;
+  if (status !== "active") {
+    return <RoomNotice kind={status} codeNext={status === "moved" ? `/chat/${roomCode}` : undefined} />;
+  }
 
   const isAlone = room.members.length < 2;
   const panel = (

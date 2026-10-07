@@ -14,7 +14,11 @@ export async function readAnonymousId(): Promise<string | null> {
   return value && ID_PATTERN.test(value) ? value : null;
 }
 
-async function setIdentityCookie(id: string) {
+export function newAnonymousId() {
+  return randomBytes(24).toString("base64url");
+}
+
+export async function setIdentityCookie(id: string) {
   (await cookies()).set(IDENTITY_COOKIE, id, {
     httpOnly: true,
     sameSite: "lax",
@@ -28,7 +32,7 @@ async function setIdentityCookie(id: string) {
 export async function ensureAnonymousId(): Promise<string> {
   const existing = await readAnonymousId();
   if (existing) return existing;
-  const id = randomBytes(24).toString("base64url");
+  const id = newAnonymousId();
   await setIdentityCookie(id);
   return id;
 }
@@ -95,15 +99,9 @@ export async function regenerateAccessCode(userId: string) {
   return formatAccessCode(await assignNewCode(userId));
 }
 
-/**
- * Signs this browser in as the owner of `code` (sets the identity cookie).
- * Returns the user, or null if the code doesn't match anyone.
- */
-export async function signInWithAccessCode(input: string) {
+/** The user who owns an access code, or null. */
+export async function findUserByAccessCode(input: string) {
   const code = normalizeAccessCode(input);
   if (!code) return null;
-  const user = await prisma.user.findUnique({ where: { accessCode: code } });
-  if (!user) return null;
-  await setIdentityCookie(user.anonymousId);
-  return user;
+  return prisma.user.findUnique({ where: { accessCode: code } });
 }
