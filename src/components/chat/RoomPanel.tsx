@@ -17,6 +17,7 @@ import {
   ShareIcon,
   TrashIcon,
   UserMinusIcon,
+  UserPlusIcon,
 } from "@/components/ui/icons";
 
 export type ConnectionState = "connecting" | "live" | "polling";
@@ -42,6 +43,10 @@ interface RoomPanelProps {
   onCloseRoom: () => void;
   onDeleteRoom: () => void;
   onRemoveMember: (member: RoomMemberInfo) => void;
+  /** Owner: add the second member yourself. */
+  onAddMember: () => void;
+  /** Owner: show the code of a member you added who hasn't used it yet. */
+  onShowMemberCode: (member: RoomMemberInfo) => void;
 }
 
 function PanelButton({
@@ -119,7 +124,18 @@ export function RoomPanel(props: RoomPanelProps) {
                   {m.displayName}
                   {m.userId === viewer.userId && <span className="font-normal text-neutral-400"> (you)</span>}
                 </p>
-                <p className="text-xs text-neutral-500">{m.isOwner ? "Owner" : "Member"}</p>
+                <p className="text-xs text-neutral-500">
+                  {m.isOwner ? "Owner" : m.pending ? "Invited · hasn't opened yet" : "Member"}
+                </p>
+                {viewer.isOwner && m.pending && !saved && (
+                  <button
+                    type="button"
+                    onClick={() => props.onShowMemberCode(m)}
+                    className="mt-0.5 text-xs font-semibold text-indigo-300 hover:text-indigo-200"
+                  >
+                    Show code
+                  </button>
+                )}
               </div>
               {viewer.isOwner && !m.isOwner && !saved && (
                 <button
@@ -136,7 +152,18 @@ export function RoomPanel(props: RoomPanelProps) {
           ))}
           {!other && !saved && (
             <li className="rounded-xl border border-dashed border-white/15 px-3 py-3 text-xs leading-relaxed text-neutral-400">
-              Waiting for your friend to join. Share the room link below.
+              {viewer.isOwner
+                ? "Waiting for your friend. Share the room link below, or add them yourself and send them a code."
+                : "Waiting for your friend to join. Share the room link below."}
+              {viewer.isOwner && (
+                <button
+                  type="button"
+                  onClick={props.onAddMember}
+                  className="mt-2.5 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                >
+                  <UserPlusIcon className="size-4" /> Add member
+                </button>
+              )}
             </li>
           )}
         </ul>

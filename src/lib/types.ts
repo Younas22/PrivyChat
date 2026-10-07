@@ -58,6 +58,14 @@ export interface RoomMemberInfo {
   displayName: string;
   isOwner: boolean;
   joinedAt: string;
+  /** Added by the owner and hasn't opened the app with their code yet. */
+  pending: boolean;
+}
+
+/** Someone you've chatted with before (for adding to another room). */
+export interface Contact {
+  userId: string;
+  displayName: string;
 }
 
 export interface RoomInfo {

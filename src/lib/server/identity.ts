@@ -14,6 +14,10 @@ export async function readAnonymousId(): Promise<string | null> {
   return value && ID_PATTERN.test(value) ? value : null;
 }
 
+/** People the owner adds get a placeholder identity until they first use their access code. */
+export const INVITE_PREFIX = "invite_";
+export const isPendingInvite = (anonymousId: string) => anonymousId.startsWith(INVITE_PREFIX);
+
 export function newAnonymousId() {
   return randomBytes(24).toString("base64url");
 }

@@ -1,10 +1,27 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
-import { REACTION_EMOJIS, type ChatMessage, type MessagesPage, type RoomSummary, type ReactionGroup } from "@/lib/types";
+import {
+  REACTION_EMOJIS,
+  type ChatMessage,
+  type Contact,
+  type MessagesPage,
+  type ReactionGroup,
+  type RoomMemberInfo,
+  type RoomSummary,
+} from "@/lib/types";
 import { getStorage } from "@/lib/storage";
 import { Errors } from "./errors";
-import { findUserByAccessCode, getCurrentUser, newAnonymousId, setIdentityCookie, upsertCurrentUser } from "./identity";
+import {
+  findUserByAccessCode,
+  getAccessCode,
+  getCurrentUser,
+  INVITE_PREFIX,
+  isPendingInvite,
+  newAnonymousId,
+  setIdentityCookie,
+  upsertCurrentUser,
+} from "./identity";
 import { publish, type RoomRef } from "./realtime";
 import { generateRoomCode, ROOM_CODE_PATTERN } from "./room-code";
 import { groupReactions, messageInclude, roomInclude, toChatMessage, toMemberInfo, toRoomInfo } from "./serialize";
@@ -166,6 +183,93 @@ export async function deleteRoom(roomCode: string) {
     console.error("Failed to delete room files", err);
   }
   await publish(room, { type: "room:deleted" });
+}
+
+// ---------- Owner adds a member ----------
+
+/** Everyone who shares (or shared) a room with this user, newest first, excluding them. */
+async function contactsOf(userId: string): Promise<Contact[]> {
+  const rows = await prisma.roomMember.findMany({
+    where: { userId: { not: userId }, room: { members: { some: { userId } } } },
+    orderBy: { joinedAt: "desc" },
+    select: { userId: true, user: { select: { displayName: true } } },
+  });
+  const seen = new Map<string, Contact>();
+  for (const r of rows) if (!seen.has(r.userId)) seen.set(r.userId, { userId: r.userId, displayName: r.user.displayName });
+  return [...seen.values()];
+}
+
+export async function listContacts(): Promise<Contact[]> {
+  const user = await getCurrentUser();
+  return user ? contactsOf(user.id) : [];
+}
+
+/**
+ * The owner adds the second member themselves: either a new person (by name; they get their own
+ * access code, which only the owner receives) or someone they've chatted with before.
+ * Returns the member and, for a new person, the code to send them.
+ */
+export async function addMember(
+  roomCode: string,
+  input: { displayName: string } | { userId: string },
+): Promise<{ member: RoomMemberInfo; code: string | null }> {
+  const { room, user: owner } = await requireMember(roomCode, { ownerOnly: true });
+
+  if ("userId" in input) {
+    const known = (await contactsOf(owner.id)).some((c) => c.userId === input.userId);
+    if (!known) throw Errors.badRequest("You can only add people you've chatted with before.");
+  }
+
+  const added = await prisma.$transaction(
+    async (tx) => {
+      // Same row lock as joining, so the two-person limit holds even with simultaneous joins.
+      await tx.$queryRaw`SELECT id FROM ChatRoom WHERE id = ${room.id} FOR UPDATE`;
+      const locked = await tx.chatRoom.findUniqueOrThrow({ where: { id: room.id } });
+      if (locked.status === "closed") throw Errors.closed();
+      const active = await tx.roomMember.count({ where: { roomId: room.id, removedAt: null } });
+      if (active >= MAX_MEMBERS) throw Errors.full();
+
+      const target =
+        "userId" in input
+          ? await tx.user.findUniqueOrThrow({ where: { id: input.userId } })
+          : await tx.user.create({
+              // Nobody holds this identity until they use their access code (which replaces it).
+              data: { anonymousId: INVITE_PREFIX + newAnonymousId(), displayName: input.displayName },
+            });
+      const existing = await tx.roomMember.findUnique({
+        where: { roomId_userId: { roomId: room.id, userId: target.id } },
+      });
+      if (existing && !existing.removedAt) throw Errors.badRequest(`${target.displayName} is already in this room.`);
+      if (existing) {
+        await tx.roomMember.update({ where: { id: existing.id }, data: { removedAt: null, joinedAt: new Date() } });
+      } else {
+        await tx.roomMember.create({ data: { roomId: room.id, userId: target.id } });
+      }
+      return target;
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+  );
+
+  const code = "userId" in input ? null : await getAccessCode(added);
+  const fresh = await prisma.chatRoom.findUniqueOrThrow({ where: { id: room.id }, include: roomInclude });
+  const member = toMemberInfo(fresh.members.find((m) => m.userId === added.id)!, fresh.ownerId);
+  await publish(room, { type: "member:joined", room: toRoomInfo(fresh), member });
+  return { member, code };
+}
+
+/**
+ * Lets the owner see the code of a member they added, only until that person first uses it
+ * (after that, the code is theirs alone).
+ */
+export async function pendingMemberCode(roomCode: string, memberId: string) {
+  const { room } = await requireMember(roomCode, { ownerOnly: true });
+  const member = room.members.find((m) => m.id === memberId);
+  if (!member || member.userId === room.ownerId) throw Errors.badRequest("That member is no longer in this room.");
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: member.userId } });
+  if (!isPendingInvite(user.anonymousId)) {
+    throw Errors.badRequest(`${user.displayName} has already used their code, so it's private now.`);
+  }
+  return getAccessCode(user);
 }
 
 /**

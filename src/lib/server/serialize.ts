@@ -2,6 +2,7 @@ import "server-only";
 import type { ChatMessage, ReactionGroup, RoomInfo, RoomMemberInfo } from "@/lib/types";
 import type { Prisma } from "@/generated/prisma/client";
 import { roomChannel } from "./realtime";
+import { isPendingInvite } from "./identity";
 
 export const messageInclude = {
   sender: { select: { id: true, displayName: true } },
@@ -86,6 +87,7 @@ export function toMemberInfo(member: RoomWithMembers["members"][number], ownerId
     displayName: member.user.displayName,
     isOwner: member.userId === ownerId,
     joinedAt: member.joinedAt.toISOString(),
+    pending: isPendingInvite(member.user.anonymousId),
   };
 }
 

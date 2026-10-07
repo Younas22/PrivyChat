@@ -37,6 +37,7 @@ import { bubbleColor, DEFAULT_BUBBLE_COLOR } from "@/lib/client/bubbleColors";
 import { usePersistentFlag, usePersistentValue } from "@/lib/client/usePersistentFlag";
 import { Composer, type UploadLimits } from "./Composer";
 import { Lightbox } from "./Lightbox";
+import { AddMemberDialog, ShareCodePanel } from "./AddMemberDialog";
 import { MessageList, type MessageListHandle, type PendingText, type PendingUpload } from "./MessageList";
 import { RoomNotice, type NoticeKind } from "./RoomNotice";
 import { ConnectionBadge, RoomPanel } from "./RoomPanel";
@@ -209,7 +210,9 @@ function ChatRoomInner({
           break;
         case "member:joined":
           setRoom(event.room);
-          if (event.member.userId !== viewer.userId) toast(`${event.member.displayName} joined the room`, "success");
+          if (event.member.userId !== viewer.userId) {
+            toast(`${event.member.displayName} ${event.member.pending ? "was added" : "joined the room"}`, "success");
+          }
           break;
         case "member:removed":
           if (event.userId === viewer.userId) {
@@ -295,6 +298,19 @@ function ChatRoomInner({
   const bubbleVars = { "--bubble": myBubble.bg, "--bubble-fg": myBubble.fg } as React.CSSProperties;
 
   // ---------- close tab / emergency exit ----------
+
+  // ---------- owner adds a member ----------
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [memberCode, setMemberCode] = useState<{ name: string; code: string } | null>(null);
+  const showMemberCode = async (member: RoomMemberInfo) => {
+    try {
+      const { code } = await api<{ code: string }>(`${base}/members/${member.id}/code`);
+      setMemberCode({ name: member.displayName, code });
+    } catch (err) {
+      reportError(err);
+    }
+  };
 
   const [exiting, setExiting] = useState(false);
   /** Hide the chat at once and close the tab; browsers only let scripts close tabs they opened,
@@ -637,6 +653,14 @@ function ChatRoomInner({
         setConfirm({ kind: "remove", member });
         setSheetOpen(false);
       }}
+      onAddMember={() => {
+        setAddOpen(true);
+        setSheetOpen(false);
+      }}
+      onShowMemberCode={(member) => {
+        setSheetOpen(false);
+        void showMemberCode(member);
+      }}
     />
   );
 
@@ -903,6 +927,25 @@ function ChatRoomInner({
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      <AddMemberDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        base={base}
+        memberUserIds={room.members.map((m) => m.userId)}
+        onNotice={(text, kind) => toast(text, kind)}
+      />
+
+      <Dialog open={!!memberCode} onClose={() => setMemberCode(null)} title={`${memberCode?.name ?? ""}'s code`}>
+        {memberCode && (
+          <ShareCodePanel
+            name={memberCode.name}
+            code={memberCode.code}
+            onDone={() => setMemberCode(null)}
+            onNotice={(text, kind) => toast(text, kind)}
+          />
+        )}
       </Dialog>
 
       {lightbox && <Lightbox src={lightbox.src} name={lightbox.name} onClose={() => setLightbox(null)} />}
