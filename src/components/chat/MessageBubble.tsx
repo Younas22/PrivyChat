@@ -80,11 +80,17 @@ function Attachment({
       <button
         type="button"
         onClick={() => onImageClick(file.url, file.name)}
-        className="block w-full overflow-hidden rounded-2xl bg-neutral-200"
+        className="block overflow-hidden rounded-2xl bg-neutral-200"
         aria-label={`Open image ${file.name}`}
       >
+        {/* Whole picture at its own shape (no cropping); big but never taller than most of the screen. */}
         {/* eslint-disable-next-line @next/next/no-img-element -- auth-protected, user-uploaded file */}
-        <img src={file.url} alt={file.name} loading="lazy" className="max-h-80 w-full object-cover" />
+        <img
+          src={file.url}
+          alt={file.name}
+          loading="lazy"
+          className="block h-auto max-h-[min(36rem,65vh)] w-auto max-w-full min-w-48 object-contain"
+        />
       </button>
     );
   }
@@ -174,6 +180,7 @@ function MessageBubbleImpl({
   };
 
   const hasMedia = !message.isDeleted && (message.type === "image" || message.type === "video");
+  const isImage = !message.isDeleted && message.type === "image";
   // Photos, videos and documents sit directly on the chat (no bubble behind them).
   const isDoc = !message.isDeleted && message.type === "document";
   const plain = isDoc || hasMedia;
@@ -231,7 +238,11 @@ function MessageBubbleImpl({
         <div
           onClick={handleBubbleClick}
           className={`relative min-w-0 rounded-2xl transition ${
-            hasMedia || isDoc ? "w-64 max-w-[calc(100vw-7.5rem)] sm:w-80" : "max-w-[calc(100vw-7.5rem)] sm:max-w-md lg:max-w-lg"
+            isImage
+              ? "max-w-[min(calc(100vw-7.5rem),28rem)] lg:max-w-[32rem]"
+              : hasMedia || isDoc
+                ? "w-64 max-w-[calc(100vw-7.5rem)] sm:w-80"
+                : "max-w-[calc(100vw-7.5rem)] sm:max-w-md lg:max-w-lg"
           } ${
             plain
               ? "text-neutral-900"
