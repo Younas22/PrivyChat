@@ -87,7 +87,7 @@ export function maxSizeFor(category: UploadCategory) {
   if (category === "image") return limitMb("MAX_IMAGE_MB", 10);
   if (category === "video") return limitMb("MAX_VIDEO_MB", 100);
   if (category === "audio") return limitMb("MAX_AUDIO_MB", 25);
-  return limitMb("MAX_DOCUMENT_MB", 25);
+  return limitMb("MAX_DOCUMENT_MB", 500);
 }
 
 export function maxUploadBytes() {
