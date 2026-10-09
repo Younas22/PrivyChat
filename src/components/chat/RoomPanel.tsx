@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { BUBBLE_COLORS, type BubbleColorId } from "@/lib/client/bubbleColors";
 import type { RoomInfo, RoomMemberInfo, Viewer } from "@/lib/types";
 import { Avatar } from "@/components/ui/Avatar";
@@ -21,6 +21,22 @@ import {
 } from "@/components/ui/icons";
 
 export type ConnectionState = "connecting" | "live" | "polling";
+
+const ONLINE_WINDOW_MS = 45_000;
+
+function memberActivity(lastSeenAt: string | null, pending: boolean, now: number) {
+  if (pending) return "Invited · hasn't opened yet";
+  if (!lastSeenAt) return "Offline · hasn't been online yet";
+  const elapsed = now - new Date(lastSeenAt).getTime();
+  if (elapsed < ONLINE_WINDOW_MS) return "Online";
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) return "Last seen just now";
+  if (minutes < 60) return `Last seen ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Last seen ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `Last seen ${days}d ago`;
+}
 
 interface RoomPanelProps {
   room: RoomInfo;
@@ -90,6 +106,11 @@ export function ConnectionBadge({ connection }: { connection: ConnectionState })
 
 export function RoomPanel(props: RoomPanelProps) {
   const { room, viewer, connection, canShare } = props;
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 10_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const other = room.members.find((m) => m.userId !== viewer.userId);
   const saved = room.status === "closed";
 
@@ -124,8 +145,8 @@ export function RoomPanel(props: RoomPanelProps) {
                   {m.displayName}
                   {m.userId === viewer.userId && <span className="font-normal text-neutral-400"> (you)</span>}
                 </p>
-                <p className="text-xs text-neutral-500">
-                  {m.isOwner ? "Owner" : m.pending ? "Invited · hasn't opened yet" : "Member"}
+                <p className={`text-xs ${m.lastSeenAt && now - new Date(m.lastSeenAt).getTime() < ONLINE_WINDOW_MS ? "text-emerald-400" : "text-neutral-500"}`}>
+                  {m.userId === viewer.userId ? "You · Online" : `${m.isOwner ? "Owner · " : ""}${memberActivity(m.lastSeenAt, m.pending, now)}`}
                 </p>
                 {viewer.isOwner && m.pending && !saved && (
                   <button

@@ -303,6 +303,39 @@ export async function listMessages(roomCode: string, before?: string | null): Pr
   return listRoomMessages(room.id, before);
 }
 
+export async function recordPresence(roomCode: string) {
+  const { room, user, membership } = await requireMember(roomCode);
+  const now = new Date();
+  if (membership.lastSeenAt && now.getTime() - membership.lastSeenAt.getTime() < 15_000) {
+    return membership.lastSeenAt.toISOString();
+  }
+  await prisma.roomMember.update({ where: { id: membership.id }, data: { lastSeenAt: now } });
+  const lastSeenAt = now.toISOString();
+  await publish(room, { type: "presence:updated", userId: user.id, lastSeenAt });
+  return lastSeenAt;
+}
+
+export async function markMessagesRead(roomCode: string, messageIds: string[]) {
+  const { room, user } = await requireMember(roomCode);
+  if (messageIds.length === 0) return null;
+
+  const unread = await prisma.message.findMany({
+    where: { id: { in: messageIds }, roomId: room.id, senderId: { not: user.id }, readAt: null },
+    select: { id: true },
+  });
+  if (unread.length === 0) return null;
+
+  const readAt = new Date();
+  const ids = unread.map((message) => message.id);
+  await prisma.message.updateMany({
+    where: { id: { in: ids }, roomId: room.id, senderId: { not: user.id }, readAt: null },
+    data: { readAt },
+  });
+  const timestamp = readAt.toISOString();
+  await publish(room, { type: "message:read", messageIds: ids, readAt: timestamp });
+  return { messageIds: ids, readAt: timestamp };
+}
+
 /** Latest page of messages for a room the caller has ALREADY been authorized for. */
 export async function listRoomMessages(roomId: string, before?: string | null): Promise<MessagesPage> {
   const room = { id: roomId };

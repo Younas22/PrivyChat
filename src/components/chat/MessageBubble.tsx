@@ -5,7 +5,7 @@ import { REACTION_EMOJIS, type ChatMessage, type ReplyPreview } from "@/lib/type
 import { fileExtension, formatBytes } from "@/lib/client/format";
 import { formatTime } from "@/lib/client/time";
 import { Avatar } from "@/components/ui/Avatar";
-import { DownloadIcon, ExternalIcon, FileIcon, ReplyIcon, SmileIcon, TrashIcon } from "@/components/ui/icons";
+import { DoubleCheckIcon, DownloadIcon, ExternalIcon, FileIcon, ReplyIcon, SmileIcon, TrashIcon } from "@/components/ui/icons";
 import { LinkifiedText } from "./LinkifiedText";
 import { VoicePlayer } from "./VoicePlayer";
 
@@ -15,6 +15,7 @@ interface MessageBubbleProps {
   /** IANA zone used for the timestamp (viewer's choice). */
   timeZone: string;
   isMine: boolean;
+  receiptStatus?: "offline" | "online" | "read";
   showSender: boolean;
   active: boolean;
   highlighted: boolean;
@@ -145,6 +146,7 @@ function MessageBubbleImpl({
   viewerId,
   timeZone,
   isMine,
+  receiptStatus,
   showSender,
   active,
   highlighted,
@@ -303,6 +305,15 @@ function MessageBubbleImpl({
             } ${plain ? "px-1" : ""}`}
           >
             {formatTime(message.createdAt, timeZone)}
+            {isMine && receiptStatus && (
+              <span
+                className={`ml-1 inline-flex align-[-2px] ${receiptStatus === "read" ? "text-emerald-500" : "text-neutral-400"}`}
+                title={receiptStatus === "read" ? "Seen" : receiptStatus === "online" ? "Delivered · recipient online" : "Sent · recipient offline"}
+                aria-label={receiptStatus === "read" ? "Seen" : receiptStatus === "online" ? "Delivered" : "Sent"}
+              >
+                {receiptStatus === "offline" ? <span className="text-[13px] font-semibold leading-none">✓</span> : <DoubleCheckIcon className="size-3.5" />}
+              </span>
+            )}
           </span>
         </div>
 

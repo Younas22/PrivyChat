@@ -59,6 +59,7 @@ model RoomMember {
   roomId    String
   userId    String
   joinedAt  DateTime  @default(now())
+  lastSeenAt DateTime?
   removedAt DateTime?
 
   room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
@@ -85,6 +86,7 @@ model Message {
   /// Audio only: loudness bars for the waveform (one base-32 digit per bar).
   waveform         String?     @db.VarChar(64)
   createdAt        DateTime    @default(now())
+  readAt           DateTime?
   updatedAt        DateTime    @updatedAt
   deletedAt        DateTime?
 

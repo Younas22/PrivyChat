@@ -134,6 +134,9 @@ function ChatRoomInner({
   const typingExpiry = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [canShare, setCanShare] = useState(false);
+  const otherMember = room.members.find((member) => member.userId !== viewer.userId);
+  const [presenceClock, setPresenceClock] = useState(0);
+  const isRecipientOnline = !!otherMember?.lastSeenAt && presenceClock - new Date(otherMember.lastSeenAt).getTime() < 45_000;
   const listRef = useRef<MessageListHandle>(null);
   const messagesRef = useRef(messages);
   const hasMoreRef = useRef(hasMore);
@@ -149,6 +152,11 @@ function ChatRoomInner({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- feature detection must run after hydration
     setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setPresenceClock(Date.now()), 10_000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const isSaved = room.status === "closed";
@@ -190,6 +198,19 @@ function ChatRoomInner({
         case "message:new":
           setMessages((list) => upsert(list, [event.message]));
           setTypingUser((t) => (t?.userId === event.message.senderId ? null : t));
+          break;
+        case "message:read":
+          setMessages((list) => list.map((message) =>
+            event.messageIds.includes(message.id) ? { ...message, readAt: event.readAt } : message,
+          ));
+          break;
+        case "presence:updated":
+          setRoom((current) => ({
+            ...current,
+            members: current.members.map((member) =>
+              member.userId === event.userId ? { ...member, lastSeenAt: event.lastSeenAt } : member,
+            ),
+          }));
           break;
         case "message:deleted":
           setMessages((list) =>
@@ -344,6 +365,42 @@ function ChatRoomInner({
     onEvent,
     onResync: resync,
   });
+
+  useEffect(() => {
+    if (status !== "active" || isSaved) return;
+    const ping = () => {
+      if (document.visibilityState === "visible") {
+        void fetch(`${base}/presence`, { method: "POST", keepalive: true }).catch(() => {});
+      }
+    };
+    ping();
+    const timer = window.setInterval(ping, 20_000);
+    document.addEventListener("visibilitychange", ping);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", ping);
+    };
+  }, [base, isSaved, status]);
+
+  useEffect(() => {
+    if (status !== "active" || isSaved || document.visibilityState !== "visible") return;
+    const unreadIds = messages
+      .filter((message) => message.senderId !== viewer.userId && !message.readAt)
+      .map((message) => message.id);
+    if (unreadIds.length === 0) return;
+    for (let index = 0; index < unreadIds.length; index += 50) {
+      const messageIds = unreadIds.slice(index, index + 50);
+      void api<{ messageIds: string[]; readAt: string | null }>(`${base}/messages/read`, {
+        method: "POST",
+        json: { messageIds },
+      }).then((result) => {
+        if (!result.readAt) return;
+        setMessages((current) => current.map((message) =>
+          result.messageIds.includes(message.id) ? { ...message, readAt: result.readAt } : message,
+        ));
+      }).catch(() => {});
+    }
+  }, [base, isSaved, messages, status, viewer.userId]);
 
   // ---------- messages ----------
 
@@ -825,6 +882,7 @@ function ChatRoomInner({
           pending={pending}
           uploads={uploads}
           viewerId={viewer.userId}
+          isRecipientOnline={isRecipientOnline}
           hasMore={hasMore}
           loadingOlder={loadingOlder}
           highlightedId={highlightedId}

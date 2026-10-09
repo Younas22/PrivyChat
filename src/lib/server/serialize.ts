@@ -40,6 +40,7 @@ export function toChatMessage(m: MessageWithRelations): ChatMessage {
     senderId: m.senderId,
     senderName: m.sender.displayName,
     createdAt: m.createdAt.toISOString(),
+    readAt: m.readAt?.toISOString() ?? null,
     isDeleted,
     file:
       !isDeleted && m.fileUrl && m.fileName && m.fileMimeType
@@ -87,6 +88,7 @@ export function toMemberInfo(member: RoomWithMembers["members"][number], ownerId
     displayName: member.user.displayName,
     isOwner: member.userId === ownerId,
     joinedAt: member.joinedAt.toISOString(),
+    lastSeenAt: member.lastSeenAt?.toISOString() ?? null,
     pending: isPendingInvite(member.user.anonymousId),
   };
 }

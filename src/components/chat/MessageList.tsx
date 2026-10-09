@@ -41,6 +41,7 @@ interface MessageListProps {
   pending: PendingText[];
   uploads: PendingUpload[];
   viewerId: string;
+  isRecipientOnline: boolean;
   hasMore: boolean;
   loadingOlder: boolean;
   highlightedId: string | null;
@@ -215,6 +216,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                       timeZone={props.timeZone}
                       onReact={props.onReact}
                       isMine={isMine}
+                      receiptStatus={isMine ? (m.readAt ? "read" : props.isRecipientOnline ? "online" : "offline") : undefined}
                       showSender={showSender}
                       active={activeId === m.id}
                       highlighted={props.highlightedId === m.id}

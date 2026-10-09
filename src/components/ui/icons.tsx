@@ -138,6 +138,12 @@ export const CheckIcon = (p: IconProps) => (
     <polyline points="20 6 9 17 4 12" />
   </Icon>
 );
+export const DoubleCheckIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m2 12 4 4L16 6" />
+    <path d="m9 12 4 4L23 6" />
+  </Icon>
+);
 export const AlertIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="10" />

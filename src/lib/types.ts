@@ -46,6 +46,7 @@ export interface ChatMessage {
   senderId: string;
   senderName: string;
   createdAt: string;
+  readAt: string | null;
   isDeleted: boolean;
   file: FileInfo | null;
   replyTo: ReplyPreview | null;
@@ -58,6 +59,7 @@ export interface RoomMemberInfo {
   displayName: string;
   isOwner: boolean;
   joinedAt: string;
+  lastSeenAt: string | null;
   /** Added by the owner and hasn't opened the app with their code yet. */
   pending: boolean;
 }
@@ -92,12 +94,14 @@ export type RealtimeConfig = { provider: "pusher"; key: string; cluster: string 
 
 export type RoomEvent =
   | { type: "message:new"; message: ChatMessage }
+  | { type: "message:read"; messageIds: string[]; readAt: string }
   | { type: "message:deleted"; messageId: string }
   | { type: "reaction:updated"; messageId: string; reactions: ReactionGroup[] }
   | { type: "room:updated"; room: RoomInfo }
   | { type: "member:joined"; room: RoomInfo; member: RoomMemberInfo }
   /** `left`: the member left on their own (emergency exit) instead of being removed. */
   | { type: "member:removed"; room: RoomInfo; userId: string; left?: boolean }
+  | { type: "presence:updated"; userId: string; lastSeenAt: string }
   | { type: "room:closed" }
   | { type: "room:deleted" }
   | { type: "typing"; userId: string; displayName: string; typing: boolean };
