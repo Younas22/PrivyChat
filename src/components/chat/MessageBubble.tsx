@@ -253,8 +253,8 @@ function MessageBubbleImpl({
               : message.isDeleted
                 ? "bg-neutral-100 px-3 py-2 text-neutral-500 shadow-sm ring-1 ring-neutral-200"
                 : isMine
-                  ? "rounded-br-md bg-(--bubble) px-3 py-2 text-(--bubble-fg) shadow-sm"
-                  : "rounded-bl-md bg-neutral-100 px-3 py-2 text-neutral-900 shadow-sm"
+                  ? "rounded-bl-md bg-(--bubble) px-3 py-2 text-(--bubble-fg) shadow-sm"
+                  : "rounded-br-md bg-neutral-100 px-3 py-2 text-neutral-900 shadow-sm"
           } ${highlighted ? "animate-flash" : ""}`}
         >
           {/* Reactions as a corner badge: top-right on their messages, top-left on mine. */}
