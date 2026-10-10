@@ -5,7 +5,7 @@ import { REACTION_EMOJIS, type ChatMessage, type ReplyPreview } from "@/lib/type
 import { fileExtension, formatBytes } from "@/lib/client/format";
 import { formatTime } from "@/lib/client/time";
 import { Avatar } from "@/components/ui/Avatar";
-import { DoubleCheckIcon, DownloadIcon, ExternalIcon, FileIcon, ReplyIcon, SmileIcon, TrashIcon } from "@/components/ui/icons";
+import { DoubleCheckIcon, DownloadIcon, ExternalIcon, FileIcon, PencilIcon, ReplyIcon, SmileIcon, TrashIcon } from "@/components/ui/icons";
 import { LinkifiedText } from "./LinkifiedText";
 import { VoicePlayer } from "./VoicePlayer";
 
@@ -22,6 +22,7 @@ interface MessageBubbleProps {
   canAct: boolean;
   onToggleActive: (id: string) => void;
   onReply: (message: ChatMessage) => void;
+  onEdit: (message: ChatMessage) => void;
   onDelete: (message: ChatMessage) => void;
   onReact: (messageId: string, emoji: string) => void;
   onQuoteClick: (id: string) => void;
@@ -153,6 +154,7 @@ function MessageBubbleImpl({
   canAct,
   onToggleActive,
   onReply,
+  onEdit,
   onDelete,
   onReact,
   onQuoteClick,
@@ -305,6 +307,7 @@ function MessageBubbleImpl({
             } ${plain ? "px-1" : ""}`}
           >
             {formatTime(message.createdAt, timeZone)}
+            {message.isEdited && <span className="ml-1">edited</span>}
             {isMine && receiptStatus && (
               <span
                 className={`ml-1 inline-flex align-[-2px] ${receiptStatus === "read" ? "text-emerald-500" : "text-neutral-400"}`}
@@ -344,6 +347,17 @@ function MessageBubbleImpl({
             >
               <ReplyIcon className="size-4" />
             </button>
+            {isMine && message.content !== null && (
+              <button
+                type="button"
+                onClick={() => onEdit(message)}
+                className="grid size-9 place-items-center rounded-full bg-white text-neutral-600 shadow-sm ring-1 ring-neutral-200 hover:text-indigo-600"
+                aria-label="Edit message"
+                title="Edit message"
+              >
+                <PencilIcon className="size-4" />
+              </button>
+            )}
             {isMine && (
               <button
                 type="button"

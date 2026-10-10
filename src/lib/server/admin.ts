@@ -193,5 +193,6 @@ export async function adminTranscript(roomCode: string) {
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     include: messageInclude,
   });
-  return { room: toRoomInfo(room), messages: rows.map(toChatMessage) };
+  const memberNames = new Map(room.members.map((member) => [member.userId, member.displayName]));
+  return { room: toRoomInfo(room), messages: rows.map((message) => toChatMessage(message, memberNames)) };
 }

@@ -31,7 +31,7 @@ export default async function ChatPage({ params }: PageProps<"/chat/[roomCode]">
         <JoinRoomForm
           roomCode={access.room.roomCode}
           roomName={access.room.name}
-          ownerName={owner?.user.displayName ?? "Someone"}
+          ownerName={owner?.displayName ?? "Someone"}
           defaultName={access.user?.displayName}
         />
       );
@@ -47,7 +47,11 @@ export default async function ChatPage({ params }: PageProps<"/chat/[roomCode]">
       return (
         <ChatRoom
           initialRoom={toRoomInfo(room)}
-          viewer={{ userId: user.id, displayName: user.displayName, isOwner: room.ownerId === user.id }}
+          viewer={{
+            userId: user.id,
+            displayName: room.members.find((member) => member.userId === user.id)?.displayName ?? user.displayName,
+            isOwner: room.ownerId === user.id,
+          }}
           initialMessages={page.messages}
           accessCode={accessCode}
           initialHasMore={page.hasMore}

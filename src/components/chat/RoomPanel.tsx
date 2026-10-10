@@ -59,6 +59,7 @@ interface RoomPanelProps {
   onCloseRoom: () => void;
   onDeleteRoom: () => void;
   onRemoveMember: (member: RoomMemberInfo) => void;
+  onEditDisplayName: (member: RoomMemberInfo) => void;
   /** Owner: add the second member yourself. */
   onAddMember: () => void;
   /** Owner: show the code of a member you added who hasn't used it yet. */
@@ -138,13 +139,26 @@ export function RoomPanel(props: RoomPanelProps) {
         <p className="mb-2 text-xs font-semibold tracking-wider text-neutral-500 uppercase">Members</p>
         <ul className="space-y-1">
           {room.members.map((m) => (
-            <li key={m.id} className="flex min-h-11 items-center gap-3 rounded-xl px-1">
+            <li key={m.id} className="group/member flex min-h-11 items-center gap-3 rounded-xl px-1">
               <Avatar name={m.displayName} id={m.userId} size="md" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">
-                  {m.displayName}
-                  {m.userId === viewer.userId && <span className="font-normal text-neutral-400"> (you)</span>}
-                </p>
+                <div className="flex min-w-0 items-center gap-1">
+                  <p className="truncate text-sm font-medium">
+                    {m.displayName}
+                    {m.userId === viewer.userId && <span className="font-normal text-neutral-400"> (you)</span>}
+                  </p>
+                  {m.userId === viewer.userId && !saved && (
+                    <button
+                      type="button"
+                      onClick={() => props.onEditDisplayName(m)}
+                      className="grid size-7 shrink-0 place-items-center rounded-md text-neutral-400 opacity-100 transition hover:bg-white/10 hover:text-white focus-visible:opacity-100 md:opacity-0 md:group-hover/member:opacity-100"
+                      aria-label="Edit your name in this room"
+                      title="Edit name in this room"
+                    >
+                      <PencilIcon className="size-3.5" />
+                    </button>
+                  )}
+                </div>
                 <p className={`text-xs ${m.lastSeenAt && now - new Date(m.lastSeenAt).getTime() < ONLINE_WINDOW_MS ? "text-emerald-400" : "text-neutral-500"}`}>
                   {m.userId === viewer.userId ? "You · Online" : `${m.isOwner ? "Owner · " : ""}${memberActivity(m.lastSeenAt, m.pending, now)}`}
                 </p>

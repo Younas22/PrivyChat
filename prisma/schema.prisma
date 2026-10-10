@@ -55,12 +55,13 @@ model ChatRoom {
 }
 
 model RoomMember {
-  id        String    @id @default(cuid())
-  roomId    String
-  userId    String
-  joinedAt  DateTime  @default(now())
-  lastSeenAt DateTime?
-  removedAt DateTime?
+  id          String    @id @default(cuid())
+  roomId      String
+  userId      String
+  displayName String    @db.VarChar(40)
+  joinedAt    DateTime  @default(now())
+  lastSeenAt  DateTime?
+  removedAt   DateTime?
 
   room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -87,6 +88,7 @@ model Message {
   waveform         String?     @db.VarChar(64)
   createdAt        DateTime    @default(now())
   readAt           DateTime?
+  editedAt         DateTime?
   updatedAt        DateTime    @updatedAt
   deletedAt        DateTime?
 

@@ -14,7 +14,7 @@ export const messageInclude = {
       content: true,
       fileName: true,
       deletedAt: true,
-      sender: { select: { displayName: true } },
+      sender: { select: { id: true, displayName: true } },
     },
   },
 } satisfies Prisma.MessageInclude;
@@ -30,7 +30,7 @@ export function groupReactions(rows: { emoji: string; userId: string }[]): React
   return [...groups].map(([emoji, userIds]) => ({ emoji, userIds }));
 }
 
-export function toChatMessage(m: MessageWithRelations): ChatMessage {
+export function toChatMessage(m: MessageWithRelations, memberNames?: Map<string, string>): ChatMessage {
   const isDeleted = m.deletedAt !== null;
   const r = m.replyTo;
   return {
@@ -38,9 +38,10 @@ export function toChatMessage(m: MessageWithRelations): ChatMessage {
     type: m.type,
     content: isDeleted ? null : m.content,
     senderId: m.senderId,
-    senderName: m.sender.displayName,
+    senderName: memberNames?.get(m.senderId) ?? m.sender.displayName,
     createdAt: m.createdAt.toISOString(),
     readAt: m.readAt?.toISOString() ?? null,
+    isEdited: m.editedAt !== null,
     isDeleted,
     file:
       !isDeleted && m.fileUrl && m.fileName && m.fileMimeType
@@ -57,7 +58,8 @@ export function toChatMessage(m: MessageWithRelations): ChatMessage {
     replyTo: r
       ? {
           id: r.id,
-          senderName: r.sender.displayName,
+          senderId: r.sender.id,
+          senderName: memberNames?.get(r.sender.id) ?? r.sender.displayName,
           type: r.type,
           isDeleted: r.deletedAt !== null,
           preview:
@@ -85,7 +87,7 @@ export function toMemberInfo(member: RoomWithMembers["members"][number], ownerId
   return {
     id: member.id,
     userId: member.userId,
-    displayName: member.user.displayName,
+    displayName: member.displayName,
     isOwner: member.userId === ownerId,
     joinedAt: member.joinedAt.toISOString(),
     lastSeenAt: member.lastSeenAt?.toISOString() ?? null,

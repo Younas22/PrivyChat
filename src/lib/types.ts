@@ -33,6 +33,7 @@ export function parseAudioMeta(durationMs: unknown, waveform: unknown) {
 
 export interface ReplyPreview {
   id: string;
+  senderId: string;
   senderName: string;
   type: MessageType;
   preview: string;
@@ -47,6 +48,7 @@ export interface ChatMessage {
   senderName: string;
   createdAt: string;
   readAt: string | null;
+  isEdited: boolean;
   isDeleted: boolean;
   file: FileInfo | null;
   replyTo: ReplyPreview | null;
@@ -94,6 +96,7 @@ export type RealtimeConfig = { provider: "pusher"; key: string; cluster: string 
 
 export type RoomEvent =
   | { type: "message:new"; message: ChatMessage }
+  | { type: "message:updated"; message: ChatMessage }
   | { type: "message:read"; messageIds: string[]; readAt: string }
   | { type: "message:deleted"; messageId: string }
   | { type: "reaction:updated"; messageId: string; reactions: ReactionGroup[] }

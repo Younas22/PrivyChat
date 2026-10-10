@@ -52,6 +52,7 @@ interface MessageListProps {
   typingUser: { userId: string; displayName: string } | null;
   onLoadOlder: () => void;
   onReply: (m: ChatMessage) => void;
+  onEdit: (m: ChatMessage) => void;
   onDelete: (m: ChatMessage) => void;
   onReact: (messageId: string, emoji: string) => void;
   onQuoteClick: (id: string) => void;
@@ -223,6 +224,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                       canAct={props.canAct}
                       onToggleActive={toggleActive}
                       onReply={props.onReply}
+                      onEdit={props.onEdit}
                       onDelete={props.onDelete}
                       onQuoteClick={props.onQuoteClick}
                       onImageClick={props.onImageClick}
@@ -258,6 +260,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                         isMine
                         reply={{
                           id: p.replyTo.id,
+                          senderId: p.replyTo.senderId,
                           senderName: p.replyTo.senderName,
                           type: p.replyTo.type,
                           preview: p.replyTo.content ?? p.replyTo.file?.name ?? "Message",

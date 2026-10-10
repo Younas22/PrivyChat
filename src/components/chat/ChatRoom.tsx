@@ -122,10 +122,14 @@ function ChatRoomInner({
   const [pending, setPending] = useState<PendingText[]>([]);
   const [uploads, setUploads] = useState<PendingUpload[]>([]);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+  const [editValue, setEditValue] = useState("");
   const [status, setStatus] = useState<"active" | NoticeKind>("active");
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [memberNameOpen, setMemberNameOpen] = useState(false);
+  const [memberNameValue, setMemberNameValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; name: string } | null>(null);
@@ -199,6 +203,9 @@ function ChatRoomInner({
           setMessages((list) => upsert(list, [event.message]));
           setTypingUser((t) => (t?.userId === event.message.senderId ? null : t));
           break;
+        case "message:updated":
+          setMessages((list) => upsert(list, [event.message]));
+          break;
         case "message:read":
           setMessages((list) => list.map((message) =>
             event.messageIds.includes(message.id) ? { ...message, readAt: event.readAt } : message,
@@ -228,6 +235,16 @@ function ChatRoomInner({
           break;
         case "room:updated":
           setRoom(event.room); // useRoomEvents also re-checks access after this event
+          {
+            const memberNames = new Map(event.room.members.map((member) => [member.userId, member.displayName]));
+            setMessages((list) => list.map((message) => ({
+              ...message,
+              senderName: memberNames.get(message.senderId) ?? message.senderName,
+              replyTo: message.replyTo
+                ? { ...message.replyTo, senderName: memberNames.get(message.replyTo.senderId) ?? message.replyTo.senderName }
+                : null,
+            })));
+          }
           break;
         case "member:joined":
           setRoom(event.room);
@@ -636,6 +653,25 @@ function ChatRoomInner({
     }
   };
 
+  const submitMemberName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { room: updatedRoom } = await api<{ room: RoomInfo }>(`${base}/members/me`, {
+        method: "PATCH",
+        json: { displayName: memberNameValue },
+      });
+      setRoom(updatedRoom);
+      setMemberNameOpen(false);
+      void resync();
+      toast("Your name was updated in this room", "success");
+    } catch (err) {
+      reportError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // ---------- reactions ----------
 
   const onReact = useCallback(
@@ -659,8 +695,31 @@ function ChatRoomInner({
   );
 
   const onReply = useCallback((m: ChatMessage) => setReplyTo(m), []);
+  const onEdit = useCallback((m: ChatMessage) => {
+    setEditingMessage(m);
+    setEditValue(m.content ?? "");
+  }, []);
   const onDelete = useCallback((m: ChatMessage) => setConfirm({ kind: "deleteMessage", message: m }), []);
   const onImageClick = useCallback((src: string, name: string) => setLightbox({ src, name }), []);
+
+  const submitEditMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMessage) return;
+    setBusy(true);
+    try {
+      const { message } = await api<{ message: ChatMessage }>(
+        `${base}/messages/${encodeURIComponent(editingMessage.id)}`,
+        { method: "PATCH", json: { content: editValue } },
+      );
+      onEvent({ type: "message:updated", message });
+      setEditingMessage(null);
+      toast("Message updated", "success");
+    } catch (err) {
+      reportError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (exiting) return <div className="h-dvh bg-white" aria-hidden="true" />;
   if (status !== "active") {
@@ -708,6 +767,11 @@ function ChatRoomInner({
       }}
       onRemoveMember={(member) => {
         setConfirm({ kind: "remove", member });
+        setSheetOpen(false);
+      }}
+      onEditDisplayName={(member) => {
+        setMemberNameValue(member.displayName);
+        setMemberNameOpen(true);
         setSheetOpen(false);
       }}
       onAddMember={() => {
@@ -892,6 +956,7 @@ function ChatRoomInner({
           typingUser={isSaved ? null : typingUser}
           onLoadOlder={loadOlder}
           onReply={onReply}
+          onEdit={onEdit}
           onDelete={onDelete}
           onReact={onReact}
           onQuoteClick={scrollToMessage}
@@ -982,6 +1047,55 @@ function ChatRoomInner({
             </Button>
             <Button type="submit" loading={busy} disabled={!renameValue.trim()}>
               Save name
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      <Dialog open={memberNameOpen} onClose={() => setMemberNameOpen(false)} title="Your name in this room" locked={busy}>
+        <form onSubmit={submitMemberName} className="space-y-4">
+          <input
+            value={memberNameValue}
+            onChange={(e) => setMemberNameValue(e.target.value)}
+            maxLength={40}
+            required
+            autoFocus
+            autoComplete="nickname"
+            className="block min-h-12 w-full rounded-xl border-0 px-4 text-base text-neutral-950 ring-1 ring-inset ring-neutral-300 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+          />
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="secondary" onClick={() => setMemberNameOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={busy} disabled={!memberNameValue.trim()}>
+              Save name
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      <Dialog
+        open={!!editingMessage}
+        onClose={() => setEditingMessage(null)}
+        title="Edit message"
+        locked={busy}
+      >
+        <form onSubmit={submitEditMessage} className="space-y-4">
+          <textarea
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            maxLength={4000}
+            required
+            autoFocus
+            rows={4}
+            className="block w-full resize-y rounded-xl border-0 px-4 py-3 text-base text-neutral-950 ring-1 ring-inset ring-neutral-300 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+          />
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="secondary" onClick={() => setEditingMessage(null)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={busy} disabled={!editValue.trim()}>
+              Save changes
             </Button>
           </div>
         </form>

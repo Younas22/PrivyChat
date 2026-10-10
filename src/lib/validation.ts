@@ -23,6 +23,9 @@ export const messageContentSchema = z
   .transform((s) => s.replace(/\r\n/g, "\n").trim())
   .pipe(z.string().min(1, "Message can't be empty.").max(4000, "Message is too long (max 4000 characters)."));
 
+export const editMessageSchema = z.object({ content: messageContentSchema });
+export const memberDisplayNameSchema = z.object({ displayName: displayNameSchema });
+
 export const idSchema = z.string().min(1).max(64).regex(/^[a-z0-9]+$/i);
 
 export const sendMessageSchema = z.object({

@@ -104,7 +104,7 @@ export async function createRoom(displayName: string, roomName?: string) {
           roomCode: generateRoomCode(),
           name: roomName || `${displayName}'s room`,
           ownerId: user.id,
-          members: { create: { userId: user.id } },
+          members: { create: { userId: user.id, displayName: user.displayName } },
         },
       });
     } catch (err) {
@@ -138,7 +138,7 @@ export async function joinRoom(roomCode: string, displayName: string) {
       const activeCount = await tx.roomMember.count({ where: { roomId: room.id, removedAt: null } });
       if (activeCount >= MAX_MEMBERS) throw Errors.full();
 
-      await tx.roomMember.create({ data: { roomId: room.id, userId: user.id } });
+      await tx.roomMember.create({ data: { roomId: room.id, userId: user.id, displayName: user.displayName } });
       return { room, joined: true };
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
@@ -157,6 +157,15 @@ export async function joinRoom(roomCode: string, displayName: string) {
 export async function renameRoom(roomCode: string, name: string) {
   const { room } = await requireMember(roomCode, { ownerOnly: true });
   const updated = await prisma.chatRoom.update({ where: { id: room.id }, data: { name }, include: roomInclude });
+  const info = toRoomInfo(updated);
+  await publish(room, { type: "room:updated", room: info });
+  return info;
+}
+
+export async function renameRoomMember(roomCode: string, displayName: string) {
+  const { room, membership } = await requireMember(roomCode);
+  await prisma.roomMember.update({ where: { id: membership.id }, data: { displayName } });
+  const updated = await prisma.chatRoom.findUniqueOrThrow({ where: { id: room.id }, include: roomInclude });
   const info = toRoomInfo(updated);
   await publish(room, { type: "room:updated", room: info });
   return info;
@@ -243,7 +252,7 @@ export async function addMember(
       if (existing) {
         await tx.roomMember.update({ where: { id: existing.id }, data: { removedAt: null, joinedAt: new Date() } });
       } else {
-        await tx.roomMember.create({ data: { roomId: room.id, userId: target.id } });
+        await tx.roomMember.create({ data: { roomId: room.id, userId: target.id, displayName: target.displayName } });
       }
       return target;
     },
@@ -344,14 +353,18 @@ export async function listRoomMessages(roomId: string, before?: string | null): 
     const cursor = await prisma.message.findFirst({ where: { id: before, roomId: room.id }, select: { createdAt: true } });
     cursorDate = cursor?.createdAt;
   }
-  const rows = await prisma.message.findMany({
-    where: { roomId: room.id, ...(cursorDate ? { createdAt: { lt: cursorDate } } : {}) },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: PAGE_SIZE + 1,
-    include: messageInclude,
-  });
+  const [rows, roomMembers] = await Promise.all([
+    prisma.message.findMany({
+      where: { roomId: room.id, ...(cursorDate ? { createdAt: { lt: cursorDate } } : {}) },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: PAGE_SIZE + 1,
+      include: messageInclude,
+    }),
+    prisma.roomMember.findMany({ where: { roomId: room.id }, select: { userId: true, displayName: true } }),
+  ]);
   const hasMore = rows.length > PAGE_SIZE;
-  return { messages: rows.slice(0, PAGE_SIZE).reverse().map(toChatMessage), hasMore };
+  const memberNames = new Map(roomMembers.map((member) => [member.userId, member.displayName]));
+  return { messages: rows.slice(0, PAGE_SIZE).reverse().map((message) => toChatMessage(message, memberNames)), hasMore };
 }
 
 async function validateReplyTarget(roomId: string, replyToMessageId?: string | null) {
@@ -379,6 +392,11 @@ interface NewMessageInput {
 
 export async function createMessage(input: NewMessageInput): Promise<ChatMessage> {
   const replyTo = await validateReplyTarget(input.room.id, input.replyToMessageId);
+  const roomMembers = await prisma.roomMember.findMany({
+    where: { roomId: input.room.id },
+    select: { userId: true, displayName: true },
+  });
+  const memberNames = new Map(roomMembers.map((member) => [member.userId, member.displayName]));
   const message = await prisma.message.create({
     data: {
       roomId: input.room.id,
@@ -395,7 +413,7 @@ export async function createMessage(input: NewMessageInput): Promise<ChatMessage
     },
     include: messageInclude,
   });
-  const dto = toChatMessage(message);
+  const dto = toChatMessage(message, memberNames);
   await publish(input.room, { type: "message:new", message: dto });
   return dto;
 }
@@ -432,6 +450,29 @@ export async function deleteMessage(roomCode: string, messageId: string) {
     if (key) await getStorage().delete(key).catch((err) => console.error("Failed to delete file", err));
   }
   await publish(room, { type: "message:deleted", messageId: message.id });
+}
+
+export async function editMessage(roomCode: string, messageId: string, content: string) {
+  const { user, room } = await requireMember(roomCode);
+  const existing = await prisma.message.findFirst({ where: { id: messageId, roomId: room.id } });
+  if (!existing || existing.deletedAt || existing.content === null) {
+    throw Errors.badRequest("This message can't be edited.");
+  }
+  if (existing.senderId !== user.id) throw Errors.badRequest("You can only edit your own messages.");
+
+  const message = await prisma.message.update({
+    where: { id: existing.id },
+    data: { content, editedAt: new Date() },
+    include: messageInclude,
+  });
+  const roomMembers = await prisma.roomMember.findMany({
+    where: { roomId: room.id },
+    select: { userId: true, displayName: true },
+  });
+  const memberNames = new Map(roomMembers.map((member) => [member.userId, member.displayName]));
+  const dto = toChatMessage(message, memberNames);
+  await publish(room, { type: "message:updated", message: dto });
+  return dto;
 }
 
 // ---------- Moving to another device ----------
