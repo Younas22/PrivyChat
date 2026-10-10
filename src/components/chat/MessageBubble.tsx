@@ -200,7 +200,7 @@ function MessageBubbleImpl({
   return (
     <div
       id={`msg-${message.id}`}
-      className={`group flex w-full scroll-mt-24 items-start gap-2 ${isMine ? "flex-row-reverse" : "flex-row"} ${showSender || hasReactions ? "mt-4" : "mt-1"}`}
+      className={`group flex w-full scroll-mt-24 items-start gap-2 ${isMine ? "flex-row" : "flex-row-reverse"} ${showSender || hasReactions ? "mt-4" : "mt-1"}`}
     >
       {/* Avatar on the first message of a group; same-width spacer keeps the rest aligned. */}
       {showSender ? (
@@ -210,11 +210,11 @@ function MessageBubbleImpl({
       ) : (
         <span className="w-8 shrink-0" aria-hidden="true" />
       )}
-      <div className={`flex min-w-0 flex-1 flex-col ${isMine ? "items-end" : "items-start"}`}>
+      <div className={`flex min-w-0 flex-1 flex-col ${isMine ? "items-start" : "items-end"}`}>
       {showSender && !isMine && (
         <span className="mb-1 px-1 text-xs font-medium text-neutral-500">{message.senderName}</span>
       )}
-      <div ref={rowRef} className={`relative flex max-w-full items-center gap-1.5 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+      <div ref={rowRef} className={`relative flex max-w-full items-center gap-1.5 ${isMine ? "flex-row" : "flex-row-reverse"}`}>
         {/* Anchored to the bubble's outer edge so it always stays on screen. */}
         {picking && (
           <div
