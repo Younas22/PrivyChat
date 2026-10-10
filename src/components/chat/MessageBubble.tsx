@@ -204,16 +204,13 @@ function MessageBubbleImpl({
     >
       {/* Avatar on the first message of a group; same-width spacer keeps the rest aligned. */}
       {showSender ? (
-        <span className={!isMine ? "mt-5" : ""}>
+        <span>
           <Avatar name={message.senderName} id={message.senderId} />
         </span>
       ) : (
         <span className="w-8 shrink-0" aria-hidden="true" />
       )}
       <div className={`flex min-w-0 flex-1 flex-col ${isMine ? "items-start" : "items-end"}`}>
-      {showSender && !isMine && (
-        <span className="mb-1 px-1 text-xs font-medium text-neutral-500">{message.senderName}</span>
-      )}
       <div ref={rowRef} className={`relative flex max-w-full items-center gap-1.5 ${isMine ? "flex-row" : "flex-row-reverse"}`}>
         {/* Anchored to the bubble's outer edge so it always stays on screen. */}
         {picking && (
