@@ -57,6 +57,70 @@ body {
   scrollbar-color: rgb(255 255 255 / 0.14) transparent;
 }
 
+/*
+ * Chat room light theme (toggled from the chat header; see useChatTheme).
+ * The chat UI is written for the dark "tr-" palette with white text, so light mode swaps the palette
+ * and re-points the light text colors (white, light neutrals, -300 accents) to dark ink.
+ */
+.chat-root {
+  color-scheme: dark;
+}
+[data-chat-theme="light"] .chat-root {
+  color-scheme: light;
+  --color-tr-bg: #f5f4fa;
+  --color-tr-side: #ffffff;
+  --color-tr-card: #ffffff;
+  --color-tr-raised: #eeebf8;
+  --color-tr-line: #e2deef;
+  --color-tr-muted: #67627f;
+
+  --color-white: #17142b;
+  --color-neutral-100: #1f1c33;
+  --color-neutral-200: #2f2b45;
+  --color-neutral-300: #45405c;
+  --color-neutral-400: #67627f;
+  --color-violet-200: #4c1d95;
+  --color-violet-300: #6d28d9;
+  --color-violet-400: #7c3aed;
+  --color-indigo-300: #4f46e5;
+  --color-sky-300: #0369a1;
+  --color-emerald-300: #047857;
+  --color-amber-300: #b45309;
+  --color-red-300: #b91c1c;
+  --color-red-400: #dc2626;
+}
+/* Solid colored fills (buttons, avatars, toasts, dialogs, lightbox) keep real white. */
+[data-chat-theme="light"] .chat-root
+  :is(
+    .bg-white,
+    .bg-black,
+    .bg-tr-primary,
+    .bg-neutral-600,
+    .bg-neutral-950,
+    .bg-red-500,
+    .bg-red-600,
+    .bg-indigo-600,
+    .bg-violet-600,
+    .bg-sky-600,
+    .bg-emerald-600,
+    .bg-rose-600,
+    .bg-amber-600,
+    .bg-fuchsia-600,
+    .bg-teal-600
+  ) {
+  --color-white: #ffffff;
+}
+/* Dialogs and the image viewer stay in their own (non-chat) colors. */
+[data-chat-theme="light"] .chat-root :is(.bg-white, .bg-neutral-950) {
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+}
+[data-chat-theme="light"] .chat-root .scrollbar-dark {
+  scrollbar-color: rgb(0 0 0 / 0.18) transparent;
+}
+
 /* Pointer cursor on everything clickable (Tailwind's reset leaves buttons with the default arrow). */
 @layer base {
   button:not(:disabled),

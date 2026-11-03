@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { APP_NAME } from "@/lib/brand";
+import { InlineScript } from "@/components/ui/InlineScript";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,7 +17,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" data-chat-theme="dark" suppressHydrationWarning>
+      <head>
+        {/* Apply the saved chat theme before first paint (key matches CHAT_THEME_KEY in useChatTheme). */}
+        <InlineScript html={`try{if(localStorage.getItem("talkroom:theme")==="light")document.documentElement.dataset.chatTheme="light"}catch(e){}`} />
+      </head>
       <body className="flex min-h-full flex-col font-sans">{children}</body>
     </html>
   );

@@ -7,6 +7,7 @@ import type { ChatMessage } from "@/lib/types";
 import { ACCEPT_ATTR, categoryOf, formatBytes } from "@/lib/client/format";
 import { FileIcon, MicIcon, PaperclipIcon, ReplyIcon, SendIcon, SmileIcon, TrashIcon, XIcon } from "@/components/ui/icons";
 import { useVoiceRecorder } from "./useVoiceRecorder";
+import { useChatTheme } from "./useChatTheme";
 import type { AudioMeta } from "@/lib/client/audioAnalysis";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -54,6 +55,7 @@ export function Composer({
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [showEmoji, setShowEmoji] = useState(false);
+  const { theme } = useChatTheme();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiRef = useRef<HTMLDivElement>(null);
@@ -257,7 +259,7 @@ export function Composer({
                 height={380}
                 previewConfig={{ showPreview: false }}
                 searchPlaceholder="Search emoji"
-                theme={"dark" as Theme}
+                theme={theme as Theme}
               />
             </div>
           )}

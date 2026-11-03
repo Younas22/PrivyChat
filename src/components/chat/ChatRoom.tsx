@@ -28,8 +28,10 @@ import {
   LogOutIcon,
   MenuIcon,
   MessageIcon,
+  MoonIcon,
   PanelLeftCloseIcon,
   RefreshIcon,
+  SunIcon,
   XIcon,
 } from "@/components/ui/icons";
 import { bubbleColor, DEFAULT_BUBBLE_COLOR } from "@/lib/client/bubbleColors";
@@ -41,6 +43,7 @@ import { MessageList, type MessageListHandle, type PendingText, type PendingUplo
 import { RoomNotice, type NoticeKind } from "./RoomNotice";
 import { ConnectionBadge, RoomPanel, RoomRail, type RoomPanelProps } from "./RoomPanel";
 import { useBell } from "./useBell";
+import { useChatTheme } from "./useChatTheme";
 import { useTimeZone } from "./useTimeZone";
 import { formatDate } from "@/lib/client/time";
 import { analyzeAudio, type AudioMeta } from "@/lib/client/audioAnalysis";
@@ -337,6 +340,9 @@ function ChatRoomInner({
     lastMessageId.current = last.id;
     if (last.senderId !== viewer.userId && !last.isDeleted) ringBell();
   }, [messages, viewer.userId, ringBell]);
+
+  // Light/dark chat theme (kept in their browser).
+  const chatTheme = useChatTheme();
 
   // Desktop sidebar can be hidden; each person's choice is remembered in their browser.
   const [sidebarOpen, setSidebarOpen] = usePersistentFlag("talkroom:sidebar", true);
@@ -836,7 +842,7 @@ function ChatRoomInner({
   };
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-tr-bg text-white" style={bubbleVars}>
+    <div className="chat-root flex h-dvh overflow-hidden bg-tr-bg text-white" style={bubbleVars}>
       {/* Desktop sidebar: full panel, or an icon rail when collapsed */}
       <aside className={`hidden w-16 shrink-0 flex-col border-r border-tr-line bg-tr-side ${sidebarOpen ? "" : "lg:flex"}`}>
         <RoomRail {...panelProps} onExpand={() => setSidebarOpen(true)} />
@@ -893,6 +899,15 @@ function ChatRoomInner({
             title="Refresh"
           >
             <RefreshIcon className={`size-[18px] ${refreshing ? "animate-spin" : ""}`} />
+          </button>
+          <button
+            type="button"
+            onClick={chatTheme.toggle}
+            aria-label={chatTheme.theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+            title={chatTheme.theme === "light" ? "Dark mode" : "Light mode"}
+            className={`grid ${HEADER_ICON_BTN}`}
+          >
+            {chatTheme.theme === "light" ? <MoonIcon className="size-[18px]" /> : <SunIcon className="size-[18px]" />}
           </button>
           {!isSaved && (
             <button
