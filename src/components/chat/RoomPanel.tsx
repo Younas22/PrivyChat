@@ -58,6 +58,8 @@ interface RoomPanelProps {
   onRename: () => void;
   onCloseRoom: () => void;
   onDeleteRoom: () => void;
+  /** Owner: delete every message in the room. */
+  onClearChat: () => void;
   onRemoveMember: (member: RoomMemberInfo) => void;
   onEditDisplayName: (member: RoomMemberInfo) => void;
   /** Owner: add the second member yourself. */
@@ -284,6 +286,9 @@ export function RoomPanel(props: RoomPanelProps) {
               Remove Member
             </PanelButton>
           )}
+          <PanelButton icon={<TrashIcon />} onClick={props.onClearChat} danger>
+            Delete All Chat
+          </PanelButton>
           <PanelButton icon={<TrashIcon />} onClick={props.onDeleteRoom} danger>
             Delete Room
           </PanelButton>

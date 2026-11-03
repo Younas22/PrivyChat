@@ -64,6 +64,7 @@ interface ChatRoomProps {
 type Confirm =
   | { kind: "close" }
   | { kind: "delete" }
+  | { kind: "clearChat" }
   | { kind: "remove"; member: RoomMemberInfo }
   | { kind: "deleteMessage"; message: ChatMessage };
 
@@ -269,6 +270,13 @@ function ChatRoomInner({
         case "room:deleted":
           setStatus("deleted");
           break;
+        case "chat:cleared":
+          setMessages([]);
+          setHasMore(false);
+          setReplyTo(null);
+          setEditingMessage(null);
+          if (!viewer.isOwner) toast("The room owner cleared the chat", "info");
+          break;
         case "typing":
           if (event.userId === viewer.userId) break;
           if (typingExpiry.current) clearTimeout(typingExpiry.current);
@@ -281,7 +289,7 @@ function ChatRoomInner({
           break;
       }
     },
-    [viewer.userId, toast, onRoomClosed],
+    [viewer.userId, viewer.isOwner, toast, onRoomClosed],
   );
 
   const resync = useCallback(async () => {
@@ -621,6 +629,10 @@ function ChatRoomInner({
         await api(base, { method: "DELETE" });
         router.replace("/");
         return;
+      } else if (confirm.kind === "clearChat") {
+        await api(`${base}/messages`, { method: "DELETE" });
+        onEvent({ type: "chat:cleared" });
+        toast("All messages deleted", "success");
       } else if (confirm.kind === "remove") {
         await api(`${base}/members/${confirm.member.id}`, { method: "DELETE" });
         setRoom((r) => ({ ...r, members: r.members.filter((m) => m.id !== confirm.member.id) }));
@@ -765,6 +777,10 @@ function ChatRoomInner({
         setConfirm({ kind: "delete" });
         setSheetOpen(false);
       }}
+      onClearChat={() => {
+        setConfirm({ kind: "clearChat" });
+        setSheetOpen(false);
+      }}
       onRemoveMember={(member) => {
         setConfirm({ kind: "remove", member });
         setSheetOpen(false);
@@ -796,6 +812,11 @@ function ChatRoomInner({
       title: "Delete room",
       message: "Permanently delete this room, all messages and uploaded files? This cannot be undone.",
       label: "Delete Room",
+    },
+    clearChat: {
+      title: "Delete all chat",
+      message: "Permanently delete every message and uploaded file in this room, for everyone? The room and its members stay. This cannot be undone.",
+      label: "Delete All",
     },
     remove: {
       title: "Remove member",

@@ -452,6 +452,29 @@ export async function deleteMessage(roomCode: string, messageId: string) {
   await publish(room, { type: "message:deleted", messageId: message.id });
 }
 
+/** Owner only: permanently deletes every message (and its file) in the room, for everyone. */
+export async function clearChat(roomCode: string) {
+  const { room } = await requireMember(roomCode, { ownerOnly: true, ownerCanReadSaved: true });
+  const files = await prisma.message.findMany({
+    where: { roomId: room.id, fileUrl: { not: null } },
+    select: { fileUrl: true },
+  });
+  // Unlink replies first so the self-referencing foreign key never blocks the bulk delete.
+  // Reactions are removed by ON DELETE CASCADE.
+  await prisma.$transaction([
+    prisma.message.updateMany({ where: { roomId: room.id, replyToMessageId: { not: null } }, data: { replyToMessageId: null } }),
+    prisma.message.deleteMany({ where: { roomId: room.id } }),
+  ]);
+  const storage = getStorage();
+  await Promise.all(
+    files.map(({ fileUrl }) => {
+      const key = fileUrl && fileKeyFromUrl(fileUrl);
+      return key ? storage.delete(key).catch((err) => console.error("Failed to delete file", err)) : null;
+    }),
+  );
+  await publish(room, { type: "chat:cleared" });
+}
+
 export async function editMessage(roomCode: string, messageId: string, content: string) {
   const { user, room } = await requireMember(roomCode);
   const existing = await prisma.message.findFirst({ where: { id: messageId, roomId: room.id } });

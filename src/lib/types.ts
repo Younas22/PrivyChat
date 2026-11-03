@@ -107,6 +107,8 @@ export type RoomEvent =
   | { type: "presence:updated"; userId: string; lastSeenAt: string }
   | { type: "room:closed" }
   | { type: "room:deleted" }
+  /** The owner deleted every message in the room. */
+  | { type: "chat:cleared" }
   | { type: "typing"; userId: string; displayName: string; typing: boolean };
 
 export interface MessagesPage {

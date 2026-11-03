@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { errorResponse, Errors } from "@/lib/server/errors";
 import { rateLimit } from "@/lib/server/rate-limit";
-import { listMessages, requireMember, sendTextMessage } from "@/lib/server/rooms";
+import { clearChat, listMessages, requireMember, sendTextMessage } from "@/lib/server/rooms";
 import { firstIssue, idSchema, sendMessageSchema } from "@/lib/validation";
 
 type Ctx = { params: Promise<{ roomCode: string }> };
@@ -26,6 +26,17 @@ export async function POST(req: Request, { params }: Ctx) {
     if (!parsed.success) throw Errors.badRequest(firstIssue(parsed.error));
     const message = await sendTextMessage(roomCode, parsed.data.content, parsed.data.replyToMessageId);
     return NextResponse.json({ message }, { status: 201 });
+  } catch (err) {
+    return errorResponse(err);
+  }
+}
+
+/** Owner only: delete all messages in the room. */
+export async function DELETE(_req: Request, { params }: Ctx) {
+  try {
+    const { roomCode } = await params;
+    await clearChat(roomCode);
+    return NextResponse.json({ ok: true });
   } catch (err) {
     return errorResponse(err);
   }
