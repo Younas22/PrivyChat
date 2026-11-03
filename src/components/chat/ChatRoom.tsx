@@ -60,6 +60,13 @@ interface ChatRoomProps {
   directUploads: "public" | "private" | null;
 }
 
+const HEADER_BTN_BASE =
+  "min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-tr-line bg-tr-card text-neutral-300 transition hover:border-tr-primary/50 hover:bg-tr-raised hover:text-white disabled:opacity-60";
+/** Square icon button in the chat header (add the display class at the call site). */
+const HEADER_ICON_BTN = `size-10 place-items-center ${HEADER_BTN_BASE}`;
+/** Icon + label button in the chat header. */
+const HEADER_TEXT_BTN = `px-3 text-sm font-medium ${HEADER_BTN_BASE}`;
+
 type Confirm =
   | { kind: "close" }
   | { kind: "delete" }
@@ -829,45 +836,45 @@ function ChatRoomInner({
   };
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-white" style={bubbleVars}>
-      {/* Desktop sidebar */}
-      <aside className={`hidden w-16 shrink-0 flex-col border-r border-white/5 bg-neutral-950 ${sidebarOpen ? "" : "lg:flex"}`}>
+    <div className="flex h-dvh overflow-hidden bg-tr-bg text-white" style={bubbleVars}>
+      {/* Desktop sidebar: full panel, or an icon rail when collapsed */}
+      <aside className={`hidden w-16 shrink-0 flex-col border-r border-tr-line bg-tr-side ${sidebarOpen ? "" : "lg:flex"}`}>
         <RoomRail {...panelProps} onExpand={() => setSidebarOpen(true)} />
       </aside>
-      <aside className={`hidden w-80 shrink-0 flex-col bg-neutral-950 ${sidebarOpen ? "lg:flex" : ""}`}>
-        <div className="flex items-center justify-between px-5 py-4">
+      <aside className={`hidden w-78 shrink-0 flex-col border-r border-tr-line bg-tr-side ${sidebarOpen ? "lg:flex" : ""}`}>
+        <div className="flex items-center justify-between px-4 py-4">
           <Logo dark />
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="-mr-2 grid size-10 place-items-center rounded-xl text-neutral-400 transition hover:bg-white/10 hover:text-white"
+            className="grid size-9 place-items-center rounded-xl text-tr-muted ring-1 ring-tr-line transition hover:bg-white/5 hover:text-white"
             aria-label="Hide sidebar"
             title="Hide sidebar"
           >
-            <PanelLeftCloseIcon className="size-5" />
+            <PanelLeftCloseIcon className="size-[18px]" />
           </button>
         </div>
-        <div className="scrollbar-thin flex-1 overflow-y-auto px-5 pb-6">{panel}</div>
+        <div className="scrollbar-dark flex-1 overflow-y-auto px-4 pb-6">{panel}</div>
       </aside>
 
-      <section className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-2 border-b sm:gap-3 border-neutral-200 bg-white px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-5">
-          <Link href="/" className="grid size-9 shrink-0 place-items-center rounded-lg bg-indigo-600 text-white lg:hidden" aria-label={`${APP_NAME} home`}>
+      <section className="flex min-w-0 flex-1 flex-col bg-tr-bg">
+        <header className="flex items-center gap-2 border-b border-tr-line bg-tr-bg px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:gap-2.5 sm:px-6">
+          <Link href="/" className="grid size-9 shrink-0 place-items-center rounded-xl bg-tr-primary text-white lg:hidden" aria-label={`${APP_NAME} home`}>
             <MessageIcon className="size-4" />
           </Link>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-semibold text-neutral-950">{room.name}</h1>
-            <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-neutral-500">
+            <h1 className="truncate text-base font-semibold text-white sm:text-lg">{room.name}</h1>
+            <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-tr-muted">
               {typingUser && !isSaved ? (
-                <span className="truncate text-xs font-medium text-indigo-600">{typingUser.displayName} is typing…</span>
+                <span className="truncate text-xs font-medium text-violet-300">{typingUser.displayName} is typing…</span>
               ) : (
                 <>
                   <span className="text-xs">
                     {room.members.length} {room.members.length === 1 ? "Member" : "Members"}
                   </span>
-                  <span className="text-neutral-300">·</span>
+                  <span className="text-white/20">·</span>
                   {isSaved ? (
-                    <span className="text-xs font-medium text-neutral-700">
+                    <span className="text-xs font-medium text-neutral-300">
                       Saved<span className="hidden sm:inline"> · read-only</span>
                     </span>
                   ) : (
@@ -881,11 +888,11 @@ function ChatRoomInner({
             type="button"
             onClick={refresh}
             disabled={refreshing}
-            className="hidden size-10 shrink-0 place-items-center rounded-xl text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-50 sm:grid"
+            className={`hidden sm:grid ${HEADER_ICON_BTN}`}
             aria-label="Refresh chat"
             title="Refresh"
           >
-            <RefreshIcon className={`size-5 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshIcon className={`size-[18px] ${refreshing ? "animate-spin" : ""}`} />
           </button>
           {!isSaved && (
             <button
@@ -894,28 +901,17 @@ function ChatRoomInner({
               aria-pressed={bell.enabled}
               aria-label={bell.enabled ? "Turn message sound off" : "Turn message sound on"}
               title={bell.enabled ? "Sound on" : "Sound off"}
-              className={`grid size-10 shrink-0 place-items-center rounded-xl ring-1 transition ${
-                bell.enabled
-                  ? "text-indigo-600 ring-indigo-200 hover:bg-indigo-50"
-                  : "text-neutral-400 ring-neutral-200 hover:bg-neutral-50"
-              }`}
+              className={`grid ${HEADER_ICON_BTN} ${bell.enabled ? "text-violet-300" : ""}`}
             >
-              {bell.enabled ? <BellIcon className="size-5" /> : <BellOffIcon className="size-5" />}
+              {bell.enabled ? <BellIcon className="size-[18px]" /> : <BellOffIcon className="size-[18px]" />}
             </button>
           )}
           {isSaved ? (
-            <Link
-              href="/rooms"
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-50"
-            >
+            <Link href="/rooms" className={`inline-flex ${HEADER_TEXT_BTN}`}>
               My Rooms
             </Link>
           ) : (
-            <button
-              type="button"
-              onClick={copyLink}
-              className="hidden min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-50 sm:inline-flex"
-            >
+            <button type="button" onClick={copyLink} className={`hidden sm:inline-flex ${HEADER_TEXT_BTN}`}>
               <CopyIcon className="size-4" />
               Copy Link
             </button>
@@ -923,11 +919,12 @@ function ChatRoomInner({
           <button
             type="button"
             onClick={closeTab}
-            className="grid size-10 shrink-0 place-items-center rounded-xl text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-50"
+            className={`grid md:inline-flex md:w-auto md:px-3 ${HEADER_ICON_BTN}`}
             aria-label="Close tab"
             title="Close tab"
           >
-            <XIcon className="size-5" />
+            <XIcon className="size-[18px]" />
+            <span className="hidden text-sm font-medium md:inline">Close</span>
           </button>
           {!viewer.isOwner && !isSaved && (
             <button
@@ -944,7 +941,7 @@ function ChatRoomInner({
           <button
             type="button"
             onClick={() => setSheetOpen(true)}
-            className="grid size-10 place-items-center rounded-xl text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-50 lg:hidden"
+            className={`grid lg:hidden ${HEADER_ICON_BTN}`}
             aria-label="Room menu"
           >
             <MenuIcon className="size-5" />
@@ -991,7 +988,7 @@ function ChatRoomInner({
         />
 
         {isSaved ? (
-          <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center text-sm text-neutral-600">
+          <div className="border-t border-tr-line bg-tr-side px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center text-sm text-tr-muted">
             This room was saved{room.closedAt ? ` on ${formatDate(room.closedAt, tz.timeZone)}` : ""}. You can read it, but no new messages can be sent.
           </div>
         ) : (
@@ -1007,23 +1004,23 @@ function ChatRoomInner({
         )}
       </section>
 
-      {/* Mobile / tablet room sheet */}
+      {/* Mobile / tablet room drawer */}
       {sheetOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="animate-fade-in absolute inset-0 bg-neutral-950/60" onClick={() => setSheetOpen(false)} />
-          <div className="animate-slide-up scrollbar-thin absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-neutral-950 px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="mx-auto h-1.5 w-10 rounded-full bg-white/20" />
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Room menu">
+          <div className="animate-fade-in absolute inset-0 bg-black/70" onClick={() => setSheetOpen(false)} />
+          <div className="animate-drawer-in absolute inset-y-0 left-0 flex w-[min(20rem,88vw)] flex-col border-r border-tr-line bg-tr-side pt-[env(safe-area-inset-top)]">
+            <div className="flex items-center justify-between px-4 py-4">
+              <Logo dark />
+              <button
+                type="button"
+                onClick={() => setSheetOpen(false)}
+                className="grid size-9 place-items-center rounded-xl text-tr-muted ring-1 ring-tr-line hover:bg-white/5 hover:text-white"
+                aria-label="Close menu"
+              >
+                <XIcon className="size-[18px]" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setSheetOpen(false)}
-              className="absolute top-3 right-3 grid size-10 place-items-center rounded-full text-neutral-400 hover:bg-white/10"
-              aria-label="Close menu"
-            >
-              <XIcon className="size-5" />
-            </button>
-            {panel}
+            <div className="scrollbar-dark flex-1 overflow-y-auto px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{panel}</div>
           </div>
         </div>
       )}

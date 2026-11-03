@@ -132,7 +132,7 @@ export function TimeZonePicker({ preference, detected, onChange }: TimeZonePicke
         aria-controls={listId}
         className="flex w-full items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5 text-left ring-1 ring-white/10 transition hover:bg-white/10"
       >
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-indigo-500/20 text-indigo-300">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-tr-primary/20 text-violet-300">
           <ClockIcon className="size-[18px]" />
         </span>
         <span className="min-w-0 flex-1">
@@ -151,7 +151,7 @@ export function TimeZonePicker({ preference, detected, onChange }: TimeZonePicke
       </button>
 
       {open && (
-        <div className="animate-fade-in mt-2 overflow-hidden rounded-xl bg-neutral-900 shadow-xl ring-1 ring-white/10">
+        <div className="animate-fade-in mt-2 overflow-hidden rounded-xl bg-tr-raised shadow-xl ring-1 ring-tr-line">
           <div className="flex items-center gap-2 border-b border-white/10 px-3">
             <SearchIcon className="size-4 shrink-0 text-neutral-500" />
             <input
@@ -186,7 +186,7 @@ export function TimeZonePicker({ preference, detected, onChange }: TimeZonePicke
                   className={`flex cursor-pointer items-center gap-3 px-3 py-2 ${i === active ? "bg-white/10" : ""}`}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className={`block truncate text-sm ${isSelected ? "font-semibold text-indigo-300" : "text-white"}`}>
+                    <span className={`block truncate text-sm ${isSelected ? "font-semibold text-violet-300" : "text-white"}`}>
                       {o.title}
                     </span>
                     {o.region && <span className="block truncate text-xs text-neutral-500">{o.region}</span>}

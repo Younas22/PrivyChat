@@ -1,6 +1,6 @@
 /** Colors a person can pick for their own message bubbles (bg + readable text color). */
 export const BUBBLE_COLORS = [
-  { id: "indigo", name: "Indigo", bg: "#4f46e5", fg: "#ffffff" },
+  { id: "indigo", name: "Violet", bg: "#5425f5", fg: "#ffffff" },
   { id: "black", name: "Black", bg: "#171717", fg: "#ffffff" },
   { id: "blue", name: "Blue", bg: "#2563eb", fg: "#ffffff" },
   { id: "teal", name: "Teal", bg: "#0d9488", fg: "#ffffff" },

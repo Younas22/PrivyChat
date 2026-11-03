@@ -6,6 +6,17 @@
   --animate-flash: flash 1.6s ease-out;
   --animate-fade-in: fade-in 0.18s ease-out;
   --animate-slide-up: slide-up 0.22s ease-out;
+  --animate-drawer-in: drawer-in 0.22s ease-out;
+
+  /* Chat room ("tr-") dark palette */
+  --color-tr-bg: #080714;
+  --color-tr-side: #100d20;
+  --color-tr-card: #17132b;
+  --color-tr-raised: #1e1938;
+  --color-tr-line: #2a2445;
+  --color-tr-muted: #9a95b4;
+  --color-tr-primary: #5425f5;
+  --color-tr-primary-2: #6935ff;
 }
 
 @keyframes flash {
@@ -15,6 +26,10 @@
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 }
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(12px); }
@@ -34,6 +49,12 @@ body {
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: rgb(0 0 0 / 0.2) transparent;
+}
+
+/* Thin scrollbars on the dark chat surfaces. */
+.scrollbar-dark {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.14) transparent;
 }
 
 /* Pointer cursor on everything clickable (Tailwind's reset leaves buttons with the default arrow). */

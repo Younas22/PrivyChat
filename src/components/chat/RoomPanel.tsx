@@ -92,7 +92,7 @@ export interface RoomPanelProps {
 type Tone = "indigo" | "sky" | "emerald" | "amber" | "danger";
 
 const TONES: Record<Tone, string> = {
-  indigo: "bg-indigo-500/15 text-indigo-300",
+  indigo: "bg-tr-primary/20 text-violet-300",
   sky: "bg-sky-500/15 text-sky-300",
   emerald: "bg-emerald-500/15 text-emerald-300",
   amber: "bg-amber-500/15 text-amber-300",
@@ -105,7 +105,7 @@ function Section({ title, children, danger }: { title: string; children: ReactNo
       <p className={`mb-2 px-1 text-[11px] font-semibold tracking-wider uppercase ${danger ? "text-red-400/80" : "text-neutral-500"}`}>
         {title}
       </p>
-      <div className={`rounded-2xl p-1.5 ring-1 ${danger ? "bg-red-500/[0.04] ring-red-500/15" : "bg-white/[0.04] ring-white/[0.07]"}`}>
+      <div className={`rounded-2xl p-1.5 ring-1 ${danger ? "bg-red-500/[0.05] ring-red-500/20" : "bg-tr-card ring-tr-line"}`}>
         {children}
       </div>
     </section>
@@ -134,13 +134,13 @@ function ActionRow({
       <span className={`grid size-9 shrink-0 place-items-center rounded-lg [&>svg]:size-[18px] ${TONES[tone]}`}>{icon}</span>
       <span className="min-w-0 flex-1">
         <span className={`block text-sm font-medium ${danger ? "text-red-300" : "text-neutral-100"}`}>{title}</span>
-        <span className="block text-xs leading-snug text-neutral-500">{hint}</span>
+        <span className="block text-xs leading-snug text-tr-muted">{hint}</span>
       </span>
       <ChevronRightIcon className="size-4 shrink-0 text-neutral-600 transition group-hover:translate-x-0.5 group-hover:text-neutral-400" />
     </>
   );
   const cls = `group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition ${
-    danger ? "hover:bg-red-500/10" : "hover:bg-white/[0.06]"
+    danger ? "hover:bg-red-500/10" : "hover:bg-white/[0.05]"
   }`;
   return href ? (
     <Link href={href} className={cls}>
@@ -176,20 +176,19 @@ export function RoomPanel(props: RoomPanelProps) {
   return (
     <div className="flex flex-col gap-5 text-white">
       {/* Room header */}
-      <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-indigo-600/35 via-violet-600/15 to-transparent p-4 ring-1 ring-white/10">
-        <div className="pointer-events-none absolute -top-10 -right-10 size-32 rounded-full bg-indigo-500/20 blur-2xl" />
+      <div className="relative rounded-2xl border border-tr-primary/45 bg-tr-primary/10 p-4">
         <div className="relative flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/30">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-tr-primary text-white">
             <MessageIcon className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold tracking-wider text-indigo-200/80 uppercase">Chat room</p>
+            <p className="text-[11px] font-semibold tracking-wider text-violet-300/80 uppercase">Chat room</p>
             <h2 className="text-lg leading-snug font-semibold [overflow-wrap:anywhere]">{room.name}</h2>
           </div>
         </div>
         <div className="relative mt-3 flex flex-wrap items-center gap-2 text-neutral-300">
           {saved ? (
-            <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-neutral-200">
+            <span className="inline-flex items-center rounded-full bg-tr-line px-2.5 py-0.5 text-xs font-medium text-neutral-200">
               Saved · read-only
             </span>
           ) : (
@@ -197,7 +196,7 @@ export function RoomPanel(props: RoomPanelProps) {
               Open
             </span>
           )}
-          <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs">{room.members.length} / 2 members</span>
+          <span className="rounded-full bg-tr-line px-2.5 py-0.5 text-xs">{room.members.length} / 2 members</span>
           {!saved && <ConnectionBadge connection={connection} />}
         </div>
       </div>
@@ -212,7 +211,7 @@ export function RoomPanel(props: RoomPanelProps) {
                 <span className="relative">
                   <Avatar name={m.displayName} id={m.userId} size="md" />
                   <span
-                    className={`absolute -right-0.5 -bottom-0.5 size-3 rounded-full ring-2 ring-neutral-950 ${online ? "bg-emerald-400" : "bg-neutral-600"}`}
+                    className={`absolute -right-0.5 -bottom-0.5 size-3 rounded-full ring-2 ring-tr-card ${online ? "bg-emerald-400" : "bg-neutral-600"}`}
                   />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -230,7 +229,7 @@ export function RoomPanel(props: RoomPanelProps) {
                       <button
                         type="button"
                         onClick={() => props.onEditDisplayName(m)}
-                        className="grid size-7 shrink-0 place-items-center rounded-md text-neutral-400 opacity-100 transition hover:bg-white/10 hover:text-white focus-visible:opacity-100 md:opacity-0 md:group-hover/member:opacity-100"
+                        className="grid size-7 shrink-0 place-items-center rounded-md text-neutral-400 opacity-100 transition hover:bg-tr-line hover:text-white focus-visible:opacity-100 md:opacity-0 md:group-hover/member:opacity-100"
                         aria-label="Edit your name in this room"
                         title="Edit name in this room"
                       >
@@ -245,7 +244,7 @@ export function RoomPanel(props: RoomPanelProps) {
                     <button
                       type="button"
                       onClick={() => props.onShowMemberCode(m)}
-                      className="mt-0.5 text-xs font-semibold text-indigo-300 hover:text-indigo-200"
+                      className="mt-0.5 text-xs font-semibold text-violet-300 hover:text-violet-200"
                     >
                       Show code
                     </button>
@@ -255,7 +254,7 @@ export function RoomPanel(props: RoomPanelProps) {
             );
           })}
           {!other && !saved && (
-            <li className="m-1 rounded-xl border border-dashed border-white/15 px-3 py-3 text-xs leading-relaxed text-neutral-400">
+            <li className="m-1 rounded-xl border border-dashed border-tr-line px-3 py-3 text-xs leading-relaxed text-tr-muted">
               {viewer.isOwner
                 ? "Waiting for your friend. Share the room link, or add them yourself and send them a code."
                 : "Waiting for your friend to join. Share the room link."}
@@ -263,7 +262,7 @@ export function RoomPanel(props: RoomPanelProps) {
                 <button
                   type="button"
                   onClick={props.onAddMember}
-                  className="mt-2.5 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                  className="mt-2.5 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-tr-primary text-sm font-semibold text-white transition hover:bg-tr-primary-2"
                 >
                   <UserPlusIcon className="size-4" /> Add member
                 </button>
@@ -321,7 +320,7 @@ export function RoomPanel(props: RoomPanelProps) {
                     title={c.name}
                     onClick={() => props.onBubbleColor(c.id)}
                     style={{ backgroundColor: c.bg, color: c.fg }}
-                    className={`grid size-8 place-items-center rounded-full ring-2 ring-offset-2 ring-offset-neutral-950 transition hover:scale-110 ${
+                    className={`grid size-8 place-items-center rounded-full ring-2 ring-offset-2 ring-offset-tr-card transition hover:scale-110 ${
                       selected ? "ring-white" : "ring-transparent"
                     }`}
                   >
@@ -390,12 +389,12 @@ function RailButton({
   danger?: boolean;
 }) {
   const cls = `group/rail relative grid size-10 shrink-0 place-items-center rounded-xl transition [&>svg]:size-5 ${
-    danger ? "text-red-400 hover:bg-red-500/15" : "text-neutral-400 hover:bg-white/10 hover:text-white"
+    danger ? "text-red-400 hover:bg-red-500/15" : "text-tr-muted hover:bg-white/[0.06] hover:text-white"
   }`;
   const tip = (
     <span
       role="tooltip"
-      className="pointer-events-none absolute top-1/2 left-full z-50 ml-3 -translate-y-1/2 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white opacity-0 shadow-lg ring-1 ring-white/10 transition group-hover/rail:opacity-100 group-focus-visible/rail:opacity-100"
+      className="pointer-events-none absolute top-1/2 left-full z-50 ml-3 -translate-y-1/2 rounded-lg bg-tr-raised px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white opacity-0 shadow-lg ring-1 ring-white/10 transition group-hover/rail:opacity-100 group-focus-visible/rail:opacity-100"
     >
       {label}
     </span>
@@ -413,7 +412,7 @@ function RailButton({
   );
 }
 
-const RailDivider = () => <span className="my-1.5 h-px w-8 shrink-0 bg-white/10" />;
+const RailDivider = () => <span className="my-1.5 h-px w-8 shrink-0 bg-tr-line" />;
 
 /** What the desktop sidebar shows when it is collapsed: every action stays one click away. */
 export function RoomRail(props: RoomPanelProps & { onExpand: () => void }) {
@@ -426,7 +425,7 @@ export function RoomRail(props: RoomPanelProps & { onExpand: () => void }) {
     <div className="flex h-full flex-col items-center gap-1 py-3">
       <Link
         href="/"
-        className="mb-1 grid size-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+        className="mb-1 grid size-10 shrink-0 place-items-center rounded-xl bg-tr-primary text-white"
         aria-label="Home"
         title="Home"
       >
@@ -440,20 +439,20 @@ export function RoomRail(props: RoomPanelProps & { onExpand: () => void }) {
           key={m.id}
           type="button"
           onClick={props.onExpand}
-          className="group/rail relative grid size-10 shrink-0 place-items-center rounded-xl transition hover:bg-white/10"
+          className="group/rail relative grid size-10 shrink-0 place-items-center rounded-xl transition hover:bg-tr-line"
           aria-label={m.displayName}
         >
           <span className="relative">
             <Avatar name={m.displayName} id={m.userId} size="sm" />
             <span
-              className={`absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-neutral-950 ${
+              className={`absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-tr-side ${
                 isOnline(m, viewer, now) ? "bg-emerald-400" : "bg-neutral-600"
               }`}
             />
           </span>
           <span
             role="tooltip"
-            className="pointer-events-none absolute top-1/2 left-full z-50 ml-3 -translate-y-1/2 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white opacity-0 shadow-lg ring-1 ring-white/10 transition group-hover/rail:opacity-100 group-focus-visible/rail:opacity-100"
+            className="pointer-events-none absolute top-1/2 left-full z-50 ml-3 -translate-y-1/2 rounded-lg bg-tr-raised px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white opacity-0 shadow-lg ring-1 ring-white/10 transition group-hover/rail:opacity-100 group-focus-visible/rail:opacity-100"
           >
             {m.displayName}
             {m.userId === viewer.userId ? " (you)" : ` · ${memberActivity(m.lastSeenAt, m.pending, now)}`}

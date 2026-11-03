@@ -53,10 +53,10 @@ export function QuoteBlock({
           : undefined
       }
       className={`mb-1.5 block w-full min-w-0 rounded-lg border-l-4 px-2.5 py-1.5 text-left text-xs transition hover:opacity-90 ${
-        isMine ? "" : "border-indigo-500 bg-white text-neutral-600 hover:bg-indigo-50"
+        isMine ? "" : "border-violet-400 bg-white/5 text-neutral-300 hover:bg-white/10"
       }`}
     >
-      <span className={`block font-semibold ${isMine ? "" : "text-indigo-700"}`}>{reply.senderName}</span>
+      <span className={`block font-semibold ${isMine ? "" : "text-violet-300"}`}>{reply.senderName}</span>
       <span className={`line-clamp-2 [overflow-wrap:anywhere] ${isMine ? "opacity-80" : ""} ${reply.isDeleted ? "italic" : ""}`}>
         {reply.preview}
       </span>
@@ -82,7 +82,7 @@ function Attachment({
       <button
         type="button"
         onClick={() => onImageClick(file.url, file.name)}
-        className="block overflow-hidden rounded-2xl bg-neutral-200"
+        className="block overflow-hidden rounded-2xl bg-tr-card"
         aria-label={`Open image ${file.name}`}
       >
         {/* Whole picture at its own shape (no cropping); big but never taller than most of the screen. */}
@@ -110,19 +110,19 @@ function Attachment({
   // Documents have no background of their own: icon, name and actions on the chat backdrop.
   return (
     <div className="flex items-center gap-3 py-1">
-      <FileIcon className="size-9 shrink-0 text-indigo-600" />
+      <FileIcon className="size-9 shrink-0 text-violet-400" />
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-sm font-medium [overflow-wrap:anywhere] text-neutral-900">{file.name}</p>
-        <p className="text-xs text-neutral-500">
+        <p className="line-clamp-2 text-sm font-medium [overflow-wrap:anywhere] text-white">{file.name}</p>
+        <p className="text-xs text-tr-muted">
           {fileExtension(file.name)} · {formatBytes(file.size)}
         </p>
       </div>
-      <div className="flex shrink-0 gap-1 text-neutral-600">
+      <div className="flex shrink-0 gap-1 text-neutral-300">
         <a
           href={file.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="grid size-10 place-items-center rounded-full hover:bg-neutral-100 hover:text-indigo-600"
+          className="grid size-10 place-items-center rounded-full hover:bg-white/10 hover:text-white"
           aria-label={`Open ${file.name}`}
           title="Open"
         >
@@ -131,7 +131,7 @@ function Attachment({
         <a
           href={`${file.url}?download=1`}
           download={file.name}
-          className="grid size-10 place-items-center rounded-full hover:bg-neutral-100 hover:text-indigo-600"
+          className="grid size-10 place-items-center rounded-full hover:bg-white/10 hover:text-white"
           aria-label={`Download ${file.name}`}
           title="Download"
         >
@@ -217,7 +217,7 @@ function MessageBubbleImpl({
           <div
             role="menu"
             aria-label="React to message"
-            className={`animate-slide-up absolute bottom-full z-20 mb-2 flex gap-0.5 rounded-full bg-white p-1 shadow-lg ring-1 ring-neutral-200 ${
+            className={`animate-slide-up absolute bottom-full z-20 mb-2 flex gap-0.5 rounded-full bg-tr-raised p-1 shadow-lg ring-1 ring-tr-line ${
               isMine ? "right-0" : "left-0"
             }`}
           >
@@ -227,7 +227,7 @@ function MessageBubbleImpl({
                 type="button"
                 role="menuitem"
                 onClick={() => react(emoji)}
-                className="grid size-10 place-items-center rounded-full text-xl transition hover:scale-125 hover:bg-neutral-100"
+                className="grid size-10 place-items-center rounded-full text-xl transition hover:scale-125 hover:bg-white/10"
                 aria-label={`React with ${emoji}`}
               >
                 {emoji}
@@ -246,12 +246,12 @@ function MessageBubbleImpl({
                 : "max-w-[calc(100vw-7.5rem)] sm:max-w-md lg:max-w-lg"
           } ${
             plain
-              ? "text-neutral-900"
+              ? "text-white"
               : message.isDeleted
-                ? "bg-neutral-100 px-3 py-2 text-neutral-500 shadow-sm ring-1 ring-neutral-200"
+                ? "border border-tr-line bg-transparent px-3 py-2 text-tr-muted"
                 : isMine
                   ? "rounded-bl-md bg-(--bubble) px-3 py-2 text-(--bubble-fg) shadow-sm"
-                  : "rounded-br-md bg-neutral-100 px-3 py-2 text-neutral-900 shadow-sm"
+                  : "rounded-br-md border border-tr-line bg-tr-card px-3 py-2 text-neutral-100"
           } ${highlighted ? "animate-flash" : ""}`}
         >
           {/* Reactions as a corner badge: top-right on their messages, top-left on mine. */}
@@ -272,7 +272,7 @@ function MessageBubbleImpl({
                     className="inline-flex items-center gap-0.5 text-lg leading-none transition enabled:hover:scale-110"
                   >
                     <span>{r.emoji}</span>
-                    {r.userIds.length > 1 && <span className="text-xs font-semibold text-neutral-500">{r.userIds.length}</span>}
+                    {r.userIds.length > 1 && <span className="text-xs font-semibold text-tr-muted">{r.userIds.length}</span>}
                   </button>
                 );
               })}
@@ -300,14 +300,14 @@ function MessageBubbleImpl({
           <span
             style={tinted && !message.isDeleted ? { color: "var(--bubble-fg)", opacity: 0.7 } : undefined}
             className={`mt-1 block text-right text-[11px] leading-none ${
-              tinted && !message.isDeleted ? "" : "text-neutral-400"
+              tinted && !message.isDeleted ? "" : "text-tr-muted"
             } ${plain ? "px-1" : ""}`}
           >
             {formatTime(message.createdAt, timeZone)}
             {message.isEdited && <span className="ml-1">edited</span>}
             {isMine && receiptStatus && (
               <span
-                className={`ml-1 inline-flex align-[-2px] ${receiptStatus === "read" ? "text-emerald-500" : "text-neutral-400"}`}
+                className={`ml-1 inline-flex align-[-2px] ${receiptStatus === "read" ? "text-emerald-400" : "text-tr-muted"}`}
                 title={receiptStatus === "read" ? "Seen" : receiptStatus === "online" ? "Delivered · recipient online" : "Sent · recipient offline"}
                 aria-label={receiptStatus === "read" ? "Seen" : receiptStatus === "online" ? "Delivered" : "Sent"}
               >
@@ -326,8 +326,8 @@ function MessageBubbleImpl({
             <button
               type="button"
               onClick={() => setPicking((v) => !v)}
-              className={`grid size-9 place-items-center rounded-full bg-white shadow-sm ring-1 ring-neutral-200 hover:text-indigo-600 ${
-                picking ? "text-indigo-600" : "text-neutral-600"
+              className={`grid size-9 place-items-center rounded-full bg-tr-card ring-1 ring-tr-line hover:text-white ${
+                picking ? "text-violet-300" : "text-tr-muted"
               }`}
               aria-label="React"
               aria-expanded={picking}
@@ -338,7 +338,7 @@ function MessageBubbleImpl({
             <button
               type="button"
               onClick={() => onReply(message)}
-              className="grid size-9 place-items-center rounded-full bg-white text-neutral-600 shadow-sm ring-1 ring-neutral-200 hover:text-indigo-600"
+              className="grid size-9 place-items-center rounded-full bg-tr-card text-tr-muted ring-1 ring-tr-line hover:text-white"
               aria-label="Reply"
               title="Reply"
             >
@@ -348,7 +348,7 @@ function MessageBubbleImpl({
               <button
                 type="button"
                 onClick={() => onEdit(message)}
-                className="grid size-9 place-items-center rounded-full bg-white text-neutral-600 shadow-sm ring-1 ring-neutral-200 hover:text-indigo-600"
+                className="grid size-9 place-items-center rounded-full bg-tr-card text-tr-muted ring-1 ring-tr-line hover:text-white"
                 aria-label="Edit message"
                 title="Edit message"
               >
@@ -359,7 +359,7 @@ function MessageBubbleImpl({
               <button
                 type="button"
                 onClick={() => onDelete(message)}
-                className="grid size-9 place-items-center rounded-full bg-white text-neutral-600 shadow-sm ring-1 ring-neutral-200 hover:text-red-600"
+                className="grid size-9 place-items-center rounded-full bg-tr-card text-tr-muted ring-1 ring-tr-line hover:text-red-400"
                 aria-label="Delete"
                 title="Delete"
               >

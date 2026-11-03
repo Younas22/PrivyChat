@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import type { Theme } from "emoji-picker-react";
 import type { ChatMessage } from "@/lib/types";
 import { ACCEPT_ATTR, categoryOf, formatBytes } from "@/lib/client/format";
 import { FileIcon, MicIcon, PaperclipIcon, ReplyIcon, SendIcon, SmileIcon, TrashIcon, XIcon } from "@/components/ui/icons";
@@ -12,8 +13,8 @@ import { Spinner } from "@/components/ui/Spinner";
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
   ssr: false,
   loading: () => (
-    <div className="grid h-[380px] w-[320px] max-w-[calc(100vw-2rem)] place-items-center rounded-2xl bg-white shadow-xl ring-1 ring-neutral-200">
-      <Spinner className="size-6 text-indigo-600" />
+    <div className="grid h-[380px] w-[320px] max-w-[calc(100vw-2rem)] place-items-center rounded-2xl bg-tr-raised shadow-xl ring-1 ring-tr-line">
+      <Spinner className="size-6 text-violet-400" />
     </div>
   ),
 });
@@ -147,9 +148,9 @@ export function Composer({
 
   if (voice.state === "recording") {
     return (
-      <div className="border-t border-neutral-200 bg-white px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4">
+      <div className="border-t border-tr-line bg-tr-bg px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
         {replyTo && (
-          <p className="mb-2 truncate rounded-xl bg-indigo-50 px-3 py-1.5 text-xs text-indigo-700">
+          <p className="mb-2 truncate rounded-xl border border-tr-line bg-tr-card px-3 py-1.5 text-xs text-violet-300">
             Replying to {replyTo.senderName}
           </p>
         )}
@@ -157,21 +158,21 @@ export function Composer({
           <button
             type="button"
             onClick={voice.cancel}
-            className="grid size-11 shrink-0 place-items-center rounded-full text-neutral-500 transition hover:bg-red-50 hover:text-red-600"
+            className="grid size-11 shrink-0 place-items-center rounded-full text-tr-muted transition hover:bg-red-500/10 hover:text-red-400"
             aria-label="Cancel recording"
             title="Cancel"
           >
             <TrashIcon className="size-5" />
           </button>
-          <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-2xl bg-red-50 px-4">
+          <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4">
             <span className="size-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
-            <span className="text-sm font-medium text-red-700 tabular-nums">{fmt(voice.elapsed)}</span>
-            <span className="truncate text-sm text-red-600/80">Recording… max {fmt(voice.maxSeconds)}</span>
+            <span className="text-sm font-medium text-red-300 tabular-nums">{fmt(voice.elapsed)}</span>
+            <span className="truncate text-sm text-red-300/80">Recording… max {fmt(voice.maxSeconds)}</span>
           </div>
           <button
             type="button"
             onClick={voice.send}
-            className="grid size-11 shrink-0 place-items-center rounded-full bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-500"
+            className="grid size-11 shrink-0 place-items-center rounded-full bg-tr-primary text-white shadow-lg shadow-tr-primary/30 transition hover:bg-tr-primary-2"
             aria-label="Send voice message"
             title="Send"
           >
@@ -183,18 +184,18 @@ export function Composer({
   }
 
   return (
-    <div className="border-t border-neutral-200 bg-white px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4">
+    <div className="border-t border-tr-line bg-tr-bg px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
       {replyTo && (
-        <div className="mb-2 flex items-center gap-2 rounded-xl bg-indigo-50 py-1.5 pr-1 pl-3">
-          <ReplyIcon className="size-4 shrink-0 text-indigo-600" />
+        <div className="mb-2 flex items-center gap-2 rounded-xl border border-tr-line bg-tr-card py-1.5 pr-1 pl-3">
+          <ReplyIcon className="size-4 shrink-0 text-violet-300" />
           <div className="min-w-0 flex-1 text-xs">
-            <span className="font-semibold text-indigo-700">Replying to {replyTo.senderName}</span>
-            <p className="truncate text-neutral-600">&ldquo;{replyLabel(replyTo)}&rdquo;</p>
+            <span className="font-semibold text-violet-300">Replying to {replyTo.senderName}</span>
+            <p className="truncate text-tr-muted">&ldquo;{replyLabel(replyTo)}&rdquo;</p>
           </div>
           <button
             type="button"
             onClick={onCancelReply}
-            className="grid size-9 shrink-0 place-items-center rounded-full text-neutral-500 hover:bg-indigo-100"
+            className="grid size-9 shrink-0 place-items-center rounded-full text-tr-muted hover:bg-white/10 hover:text-white"
             aria-label="Cancel reply"
           >
             <XIcon className="size-4" />
@@ -203,18 +204,18 @@ export function Composer({
       )}
 
       {file && (
-        <div className="mb-2 flex items-center gap-3 rounded-xl bg-neutral-100 p-2">
+        <div className="mb-2 flex items-center gap-3 rounded-xl border border-tr-line bg-tr-card p-2">
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
             <img src={preview} alt="" className="size-12 shrink-0 rounded-lg object-cover" />
           ) : (
-            <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-indigo-600 text-white">
+            <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-tr-primary text-white">
               <FileIcon className="size-5" />
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-neutral-900">{file.name}</p>
-            <p className="text-xs text-neutral-500">
+            <p className="truncate text-sm font-medium text-white">{file.name}</p>
+            <p className="text-xs text-tr-muted">
               {formatBytes(file.size)} · add a caption or press send
             </p>
           </div>
@@ -225,7 +226,7 @@ export function Composer({
               setPreview(null);
               if (fileInputRef.current) fileInputRef.current.value = "";
             }}
-            className="grid size-9 shrink-0 place-items-center rounded-full text-neutral-500 hover:bg-neutral-200"
+            className="grid size-9 shrink-0 place-items-center rounded-full text-tr-muted hover:bg-white/10 hover:text-white"
             aria-label="Remove attachment"
           >
             <XIcon className="size-4" />
@@ -233,19 +234,19 @@ export function Composer({
         </div>
       )}
 
-      <div className="flex items-end gap-1.5">
+      <div className="flex items-end gap-1 rounded-2xl border border-tr-line bg-tr-card p-1.5 transition focus-within:border-tr-primary/60 focus-within:ring-2 focus-within:ring-tr-primary/20">
         <div ref={emojiRef} className="relative">
           <button
             type="button"
             disabled={disabled}
             onClick={() => setShowEmoji((v) => !v)}
-            className={`grid size-11 place-items-center rounded-full transition disabled:opacity-50 ${
-              showEmoji ? "bg-indigo-50 text-indigo-600" : "text-neutral-500 hover:bg-neutral-100"
+            className={`grid size-10 place-items-center rounded-xl transition disabled:opacity-50 ${
+              showEmoji ? "bg-tr-primary/20 text-violet-300" : "text-tr-muted hover:bg-white/[0.06] hover:text-white"
             }`}
             aria-label="Insert emoji"
             aria-expanded={showEmoji}
           >
-            <SmileIcon className="size-6" />
+            <SmileIcon className="size-[22px]" />
           </button>
           {showEmoji && (
             <div className="absolute bottom-full left-0 z-30 mb-2">
@@ -256,6 +257,7 @@ export function Composer({
                 height={380}
                 previewConfig={{ showPreview: false }}
                 searchPlaceholder="Search emoji"
+                theme={"dark" as Theme}
               />
             </div>
           )}
@@ -265,7 +267,7 @@ export function Composer({
           type="button"
           disabled={disabled}
           onClick={() => fileInputRef.current?.click()}
-          className="grid size-11 shrink-0 place-items-center rounded-full text-neutral-500 transition hover:bg-neutral-100 disabled:opacity-50"
+          className="grid size-10 shrink-0 place-items-center rounded-xl text-tr-muted transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
           aria-label="Attach a file"
         >
           <PaperclipIcon className="size-5" />
@@ -296,8 +298,8 @@ export function Composer({
           disabled={disabled}
           rows={1}
           maxLength={4000}
-          placeholder={disabled ? "You can't send messages in this room" : file ? "Add a caption…" : "Type a message…"}
-          className="scrollbar-thin max-h-40 min-h-11 min-w-0 flex-1 resize-none rounded-2xl border-0 bg-neutral-100 px-4 py-2.5 text-base leading-6 text-neutral-950 placeholder:text-neutral-400 focus:bg-white focus:ring-2 focus:ring-indigo-600 focus:outline-none disabled:opacity-60 sm:text-[15px]"
+          placeholder={disabled ? "You can't send messages in this room" : file ? "Add a caption…" : "Type a message..."}
+          className="scrollbar-dark max-h-40 min-h-10 min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-base leading-6 text-white placeholder:text-tr-muted focus:ring-0 focus:outline-none disabled:opacity-60 sm:text-[15px]"
           aria-label="Message"
         />
 
@@ -306,7 +308,7 @@ export function Composer({
             type="button"
             onClick={() => void voice.start()}
             disabled={voice.state === "starting"}
-            className="grid size-11 shrink-0 place-items-center rounded-full bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-60"
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-tr-primary text-white shadow-lg shadow-tr-primary/30 transition hover:bg-tr-primary-2 disabled:opacity-60"
             aria-label="Record voice message"
             title="Record voice message"
           >
@@ -317,7 +319,7 @@ export function Composer({
             type="button"
             onClick={submit}
             disabled={!canSend}
-            className="grid size-11 shrink-0 place-items-center rounded-full bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-500 disabled:bg-neutral-200 disabled:text-neutral-400"
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-tr-primary text-white shadow-lg shadow-tr-primary/30 transition hover:bg-tr-primary-2 disabled:bg-tr-raised disabled:text-tr-muted disabled:shadow-none"
             aria-label="Send message"
           >
             <SendIcon className="size-5" />

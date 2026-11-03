@@ -157,7 +157,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="scrollbar-thin absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain"
+        className="scrollbar-dark absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain"
       >
         <div ref={contentRef} className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-3 py-4 sm:px-6">
           {props.hasMore && (
@@ -166,7 +166,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                 type="button"
                 onClick={props.onLoadOlder}
                 disabled={props.loadingOlder}
-                className="inline-flex min-h-9 items-center gap-2 rounded-full bg-neutral-100 px-4 text-xs font-medium text-neutral-600 hover:bg-neutral-200"
+                className="inline-flex min-h-9 items-center gap-2 rounded-full border border-tr-line bg-tr-card px-4 text-xs font-medium text-neutral-300 hover:bg-tr-raised"
               >
                 {props.loadingOlder && <Spinner className="size-3.5" />}
                 {props.loadingOlder ? "Loading…" : "Load earlier messages"}
@@ -176,11 +176,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
 
           {isEmpty ? (
             <div className="m-auto flex max-w-sm flex-col items-center py-10 text-center">
-              <span className="mb-4 grid size-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600">
-                <MessageIcon className="size-7" />
-              </span>
-              <h3 className="font-semibold text-neutral-900">No messages yet</h3>
-              <p className="mt-1 text-sm text-neutral-500">
+              {/* Two overlapping chat bubbles */}
+              <div className="relative mb-7 h-24 w-32" aria-hidden="true">
+                <span className="absolute top-0 left-0 grid h-16 w-22 place-items-center rounded-2xl rounded-bl-md bg-tr-primary shadow-lg shadow-tr-primary/30">
+                  <MessageIcon className="size-7 text-white" />
+                </span>
+                <span className="absolute right-0 bottom-0 flex h-14 w-20 items-center justify-center gap-1.5 rounded-2xl rounded-br-md border border-tr-line bg-tr-raised">
+                  <span className="size-1.5 rounded-full bg-tr-muted" />
+                  <span className="size-1.5 rounded-full bg-tr-muted" />
+                  <span className="size-1.5 rounded-full bg-tr-muted" />
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-white">No messages yet</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-tr-muted">
                 {props.isAlone
                   ? "Share the room link with your friend. Once they join, you can start chatting."
                   : "Say hello and start the conversation 👋"}
@@ -189,9 +197,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                 <button
                   type="button"
                   onClick={props.onCopyLink}
-                  className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+                  className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-tr-primary px-5 text-sm font-semibold text-white shadow-lg shadow-tr-primary/25 transition hover:bg-tr-primary-2"
                 >
-                  <CopyIcon className="size-4" /> Copy room link
+                  <CopyIcon className="size-4" /> Copy Room Link
                 </button>
               )}
             </div>
@@ -206,7 +214,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                   <div key={m.id}>
                     {newDay && (
                       <div className="my-4 flex justify-center">
-                        <span className="rounded-full bg-neutral-100 px-3 py-1 text-[11px] font-medium text-neutral-500">
+                        <span className="rounded-full border border-tr-line bg-tr-card px-3 py-1 text-[11px] font-medium text-tr-muted">
                           {formatDay(m.createdAt, props.timeZone)}
                         </span>
                       </div>
@@ -237,14 +245,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                 <div className="mt-3 flex items-end gap-2" aria-live="polite">
                   <Avatar name={props.typingUser.displayName} id={props.typingUser.userId} />
                   <div
-                    className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-neutral-100 px-4 py-3 shadow-sm"
+                    className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-tr-line bg-tr-card px-4 py-3"
                     title={`${props.typingUser.displayName} is typing…`}
                   >
                     <span className="sr-only">{props.typingUser.displayName} is typing…</span>
                     {[0, 150, 300].map((delay) => (
                       <span
                         key={delay}
-                        className="size-2 animate-bounce rounded-full bg-neutral-400"
+                        className="size-2 animate-bounce rounded-full bg-tr-muted"
                         style={{ animationDelay: `${delay}ms` }}
                       />
                     ))}
@@ -287,20 +295,20 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                       {u.status === "failed" ? (
                         <AlertIcon className="size-9 shrink-0 text-red-500" />
                       ) : (
-                        <FileIcon className="size-9 shrink-0 text-indigo-600" />
+                        <FileIcon className="size-9 shrink-0 text-violet-400" />
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-neutral-900">
+                        <p className="truncate text-sm font-medium text-white">
                           {/^voice-d+./.test(u.file.name) ? "🎤 Voice message" : u.file.name}
                         </p>
-                        <p className={`text-xs ${u.status === "failed" ? "text-red-600" : "text-neutral-500"}`}>
+                        <p className={`text-xs ${u.status === "failed" ? "text-red-400" : "text-tr-muted"}`}>
                           {u.status === "failed" ? u.error : `Uploading… ${Math.round(u.progress * 100)}% of ${formatBytes(u.file.size)}`}
                         </p>
                       </div>
                     </div>
                     {u.status === "uploading" && (
-                      <div className="mt-2 h-1 overflow-hidden rounded-full bg-neutral-200">
-                        <div className="h-full rounded-full bg-indigo-600 transition-[width]" style={{ width: `${u.progress * 100}%` }} />
+                      <div className="mt-2 h-1 overflow-hidden rounded-full bg-tr-line">
+                        <div className="h-full rounded-full bg-tr-primary transition-[width]" style={{ width: `${u.progress * 100}%` }} />
                       </div>
                     )}
                   </div>
@@ -323,7 +331,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         <button
           type="button"
           onClick={() => scrollToBottom()}
-          className="animate-slide-up absolute bottom-4 left-1/2 inline-flex min-h-10 -translate-x-1/2 items-center gap-2 rounded-full bg-neutral-950 px-4 text-xs font-semibold text-white shadow-lg"
+          className="animate-slide-up absolute bottom-4 left-1/2 inline-flex min-h-10 -translate-x-1/2 items-center gap-2 rounded-full bg-tr-primary px-4 text-xs font-semibold text-white shadow-lg"
         >
           <ArrowDownIcon className="size-4" /> New messages
         </button>
@@ -343,14 +351,14 @@ function PendingStatus({
   onRetry: () => void;
   onDiscard: () => void;
 }) {
-  if (!failed) return <span className="mt-1 px-1 text-[11px] text-neutral-400">{label}</span>;
+  if (!failed) return <span className="mt-1 px-1 text-[11px] text-tr-muted">{label}</span>;
   return (
-    <div className="mt-1 flex items-center gap-1 text-[11px] text-red-600">
+    <div className="mt-1 flex items-center gap-1 text-[11px] text-red-400">
       <AlertIcon className="size-3.5" /> {label}
-      <button type="button" onClick={onRetry} className="ml-1 inline-flex min-h-8 items-center gap-1 rounded-full px-2 font-semibold hover:bg-red-50">
+      <button type="button" onClick={onRetry} className="ml-1 inline-flex min-h-8 items-center gap-1 rounded-full px-2 font-semibold hover:bg-red-500/10">
         <RefreshIcon className="size-3.5" /> Retry
       </button>
-      <button type="button" onClick={onDiscard} className="inline-flex min-h-8 items-center gap-1 rounded-full px-2 font-semibold text-neutral-500 hover:bg-neutral-100">
+      <button type="button" onClick={onDiscard} className="inline-flex min-h-8 items-center gap-1 rounded-full px-2 font-semibold text-tr-muted hover:bg-white/5">
         <XIcon className="size-3.5" /> Discard
       </button>
     </div>

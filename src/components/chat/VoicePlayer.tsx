@@ -111,7 +111,7 @@ export function VoicePlayer({ src, tinted, durationMs, waveform }: VoicePlayerPr
     seekTo(((clientX - rect.left) / rect.width) * duration);
   };
 
-  const fg = tinted ? "var(--bubble-fg)" : "#4f46e5";
+  const fg = tinted ? "var(--bubble-fg)" : "#8b6bff";
 
   return (
     <div className="flex w-60 max-w-full items-center gap-3 py-0.5 sm:w-72">
@@ -136,7 +136,7 @@ export function VoicePlayer({ src, tinted, durationMs, waveform }: VoicePlayerPr
         aria-label={playing ? "Pause voice message" : "Play voice message"}
         style={tinted ? { backgroundColor: "color-mix(in srgb, var(--bubble-fg) 20%, transparent)", color: "var(--bubble-fg)" } : undefined}
         className={`grid size-10 shrink-0 place-items-center rounded-full transition hover:scale-105 ${
-          tinted ? "" : "bg-indigo-600 text-white"
+          tinted ? "" : "bg-tr-primary text-white"
         }`}
       >
         {playing ? <PauseIcon className="size-4" /> : <PlayIcon className="size-4 translate-x-px" />}
@@ -186,7 +186,7 @@ export function VoicePlayer({ src, tinted, durationMs, waveform }: VoicePlayerPr
         </div>
         <span
           style={tinted ? { color: "var(--bubble-fg)", opacity: 0.75 } : undefined}
-          className={`mt-0.5 block text-[11px] tabular-nums ${tinted ? "" : "text-neutral-500"}`}
+          className={`mt-0.5 block text-[11px] tabular-nums ${tinted ? "" : "text-tr-muted"}`}
         >
           {started ? `${formatDuration(current)} / ${formatDuration(duration)}` : formatDuration(duration)}
         </span>
