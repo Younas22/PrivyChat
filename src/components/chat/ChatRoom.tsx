@@ -29,7 +29,6 @@ import {
   MenuIcon,
   MessageIcon,
   PanelLeftCloseIcon,
-  PanelLeftOpenIcon,
   RefreshIcon,
   XIcon,
 } from "@/components/ui/icons";
@@ -40,7 +39,7 @@ import { Lightbox } from "./Lightbox";
 import { AddMemberDialog, ShareCodePanel } from "./AddMemberDialog";
 import { MessageList, type MessageListHandle, type PendingText, type PendingUpload } from "./MessageList";
 import { RoomNotice, type NoticeKind } from "./RoomNotice";
-import { ConnectionBadge, RoomPanel } from "./RoomPanel";
+import { ConnectionBadge, RoomPanel, RoomRail, type RoomPanelProps } from "./RoomPanel";
 import { useBell } from "./useBell";
 import { useTimeZone } from "./useTimeZone";
 import { formatDate } from "@/lib/client/time";
@@ -739,67 +738,66 @@ function ChatRoomInner({
   }
 
   const isAlone = room.members.length < 2;
-  const panel = (
-    <RoomPanel
-      room={room}
-      viewer={viewer}
-      timeZonePreference={tz.preference}
-      detectedTimeZone={tz.detected}
-      onTimeZone={(zone) => {
-        tz.setPreference(zone);
-        toast(zone === "auto" ? "Time zone: automatic" : `Time zone: ${zone.replace(/_/g, " ")}`, "success");
-      }}
-      accessCode={accessCode}
-      onCodeNotice={(text, kind) => toast(text, kind)}
-      bubbleColorId={myBubble.id}
-      onBubbleColor={(id) => {
-        setBubbleColorId(id);
-        toast(`Chat color: ${bubbleColor(id).name}`, "success");
-      }}
-      connection={connection}
-      canShare={canShare}
-      onCopyLink={copyLink}
-      onRefresh={() => {
-        setSheetOpen(false);
-        void refresh();
-      }}
-      onShare={shareLink}
-      onRename={() => {
-        setRenameValue(room.name);
-        setRenameOpen(true);
-        setSheetOpen(false);
-      }}
-      onCloseRoom={() => {
-        setConfirm({ kind: "close" });
-        setSheetOpen(false);
-      }}
-      onDeleteRoom={() => {
-        setConfirm({ kind: "delete" });
-        setSheetOpen(false);
-      }}
-      onClearChat={() => {
-        setConfirm({ kind: "clearChat" });
-        setSheetOpen(false);
-      }}
-      onRemoveMember={(member) => {
-        setConfirm({ kind: "remove", member });
-        setSheetOpen(false);
-      }}
-      onEditDisplayName={(member) => {
-        setMemberNameValue(member.displayName);
-        setMemberNameOpen(true);
-        setSheetOpen(false);
-      }}
-      onAddMember={() => {
-        setAddOpen(true);
-        setSheetOpen(false);
-      }}
-      onShowMemberCode={(member) => {
-        setSheetOpen(false);
-        void showMemberCode(member);
-      }}
-    />
-  );
+  const panelProps: RoomPanelProps = {
+    room,
+    viewer,
+    timeZonePreference: tz.preference,
+    detectedTimeZone: tz.detected,
+    onTimeZone: (zone) => {
+      tz.setPreference(zone);
+      toast(zone === "auto" ? "Time zone: automatic" : `Time zone: ${zone.replace(/_/g, " ")}`, "success");
+    },
+    accessCode,
+    onCodeNotice: (text, kind) => toast(text, kind),
+    bubbleColorId: myBubble.id,
+    onBubbleColor: (id) => {
+      setBubbleColorId(id);
+      toast(`Chat color: ${bubbleColor(id).name}`, "success");
+    },
+    connection,
+    canShare,
+    onCopyLink: copyLink,
+    onRefresh: () => {
+      setSheetOpen(false);
+      void refresh();
+    },
+    onShare: shareLink,
+    onRename: () => {
+      setRenameValue(room.name);
+      setRenameOpen(true);
+      setSheetOpen(false);
+    },
+    onCloseRoom: () => {
+      setConfirm({ kind: "close" });
+      setSheetOpen(false);
+    },
+    onDeleteRoom: () => {
+      setConfirm({ kind: "delete" });
+      setSheetOpen(false);
+    },
+    onClearChat: () => {
+      setConfirm({ kind: "clearChat" });
+      setSheetOpen(false);
+    },
+    onRemoveMember: (member) => {
+      setConfirm({ kind: "remove", member });
+      setSheetOpen(false);
+    },
+    onEditDisplayName: (member) => {
+      setMemberNameValue(member.displayName);
+      setMemberNameOpen(true);
+      setSheetOpen(false);
+    },
+    onAddMember: () => {
+      setAddOpen(true);
+      setSheetOpen(false);
+    },
+    onShowMemberCode: (member) => {
+      setSheetOpen(false);
+      void showMemberCode(member);
+    },
+  };
+  const panel = <RoomPanel {...panelProps} />;
 
   const confirmCopy: Record<Confirm["kind"], { title: string; message: string; label: string }> = {
     close: {
@@ -833,6 +831,9 @@ function ChatRoomInner({
   return (
     <div className="flex h-dvh overflow-hidden bg-white" style={bubbleVars}>
       {/* Desktop sidebar */}
+      <aside className={`hidden w-16 shrink-0 flex-col border-r border-white/5 bg-neutral-950 ${sidebarOpen ? "" : "lg:flex"}`}>
+        <RoomRail {...panelProps} onExpand={() => setSidebarOpen(true)} />
+      </aside>
       <aside className={`hidden w-80 shrink-0 flex-col bg-neutral-950 ${sidebarOpen ? "lg:flex" : ""}`}>
         <div className="flex items-center justify-between px-5 py-4">
           <Logo dark />
@@ -854,17 +855,6 @@ function ChatRoomInner({
           <Link href="/" className="grid size-9 shrink-0 place-items-center rounded-lg bg-indigo-600 text-white lg:hidden" aria-label={`${APP_NAME} home`}>
             <MessageIcon className="size-4" />
           </Link>
-          {!sidebarOpen && (
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="hidden size-10 shrink-0 place-items-center rounded-xl text-neutral-700 ring-1 ring-neutral-200 transition hover:bg-neutral-50 lg:grid"
-              aria-label="Show sidebar"
-              title="Show sidebar"
-            >
-              <PanelLeftOpenIcon className="size-5" />
-            </button>
-          )}
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold text-neutral-950">{room.name}</h1>
             <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-neutral-500">

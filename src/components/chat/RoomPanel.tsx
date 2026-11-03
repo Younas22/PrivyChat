@@ -10,11 +10,15 @@ import { AccessCodeCard } from "@/components/code/AccessCodeCard";
 import {
   ArchiveIcon,
   CheckIcon,
+  ChevronRightIcon,
   CopyIcon,
+  EraserIcon,
   MessageIcon,
+  PanelLeftOpenIcon,
   PencilIcon,
   RefreshIcon,
   ShareIcon,
+  SlidersIcon,
   TrashIcon,
   UserMinusIcon,
   UserPlusIcon,
@@ -38,7 +42,24 @@ function memberActivity(lastSeenAt: string | null, pending: boolean, now: number
   return `Last seen ${days}d ago`;
 }
 
-interface RoomPanelProps {
+function isOnline(member: RoomMemberInfo, viewer: Viewer, now: number) {
+  if (member.userId === viewer.userId) return true;
+  return !!member.lastSeenAt && now - new Date(member.lastSeenAt).getTime() < ONLINE_WINDOW_MS;
+}
+
+/** A clock that ticks every 10s, for "last seen" labels. */
+function useNow() {
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- start the clock after hydration
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 10_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return now;
+}
+
+export interface RoomPanelProps {
   room: RoomInfo;
   viewer: Viewer;
   connection: ConnectionState;
@@ -68,27 +89,66 @@ interface RoomPanelProps {
   onShowMemberCode: (member: RoomMemberInfo) => void;
 }
 
-function PanelButton({
+type Tone = "indigo" | "sky" | "emerald" | "amber" | "danger";
+
+const TONES: Record<Tone, string> = {
+  indigo: "bg-indigo-500/15 text-indigo-300",
+  sky: "bg-sky-500/15 text-sky-300",
+  emerald: "bg-emerald-500/15 text-emerald-300",
+  amber: "bg-amber-500/15 text-amber-300",
+  danger: "bg-red-500/15 text-red-400",
+};
+
+function Section({ title, children, danger }: { title: string; children: ReactNode; danger?: boolean }) {
+  return (
+    <section>
+      <p className={`mb-2 px-1 text-[11px] font-semibold tracking-wider uppercase ${danger ? "text-red-400/80" : "text-neutral-500"}`}>
+        {title}
+      </p>
+      <div className={`rounded-2xl p-1.5 ring-1 ${danger ? "bg-red-500/[0.04] ring-red-500/15" : "bg-white/[0.04] ring-white/[0.07]"}`}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** One clear action: colored icon, a title, and a short line saying what it does. */
+function ActionRow({
   icon,
-  children,
+  title,
+  hint,
+  tone,
   onClick,
-  danger,
+  href,
 }: {
   icon: ReactNode;
-  children: ReactNode;
-  onClick: () => void;
-  danger?: boolean;
+  title: string;
+  hint: string;
+  tone: Tone;
+  onClick?: () => void;
+  href?: string;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition ${
-        danger ? "text-red-400 hover:bg-red-500/10" : "text-neutral-200 hover:bg-white/10"
-      }`}
-    >
-      <span className="shrink-0 [&>svg]:size-[18px]">{icon}</span>
-      {children}
+  const danger = tone === "danger";
+  const content = (
+    <>
+      <span className={`grid size-9 shrink-0 place-items-center rounded-lg [&>svg]:size-[18px] ${TONES[tone]}`}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className={`block text-sm font-medium ${danger ? "text-red-300" : "text-neutral-100"}`}>{title}</span>
+        <span className="block text-xs leading-snug text-neutral-500">{hint}</span>
+      </span>
+      <ChevronRightIcon className="size-4 shrink-0 text-neutral-600 transition group-hover:translate-x-0.5 group-hover:text-neutral-400" />
+    </>
+  );
+  const cls = `group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition ${
+    danger ? "hover:bg-red-500/10" : "hover:bg-white/[0.06]"
+  }`;
+  return href ? (
+    <Link href={href} className={cls}>
+      {content}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={cls}>
+      {content}
     </button>
   );
 }
@@ -109,89 +169,96 @@ export function ConnectionBadge({ connection }: { connection: ConnectionState })
 
 export function RoomPanel(props: RoomPanelProps) {
   const { room, viewer, connection, canShare } = props;
-  const [now, setNow] = useState(0);
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 10_000);
-    return () => window.clearInterval(timer);
-  }, []);
+  const now = useNow();
   const other = room.members.find((m) => m.userId !== viewer.userId);
   const saved = room.status === "closed";
 
   return (
-    <div className="flex flex-col gap-6 text-white">
-      <div>
-        <p className="text-xs font-semibold tracking-wider text-indigo-300 uppercase">Room</p>
-        <h2 className="mt-1 text-lg leading-snug font-semibold [overflow-wrap:anywhere]">{room.name}</h2>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-neutral-400">
+    <div className="flex flex-col gap-5 text-white">
+      {/* Room header */}
+      <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-indigo-600/35 via-violet-600/15 to-transparent p-4 ring-1 ring-white/10">
+        <div className="pointer-events-none absolute -top-10 -right-10 size-32 rounded-full bg-indigo-500/20 blur-2xl" />
+        <div className="relative flex items-start gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/30">
+            <MessageIcon className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold tracking-wider text-indigo-200/80 uppercase">Chat room</p>
+            <h2 className="text-lg leading-snug font-semibold [overflow-wrap:anywhere]">{room.name}</h2>
+          </div>
+        </div>
+        <div className="relative mt-3 flex flex-wrap items-center gap-2 text-neutral-300">
           {saved ? (
-            <span className="inline-flex items-center rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-neutral-200">
+            <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-neutral-200">
               Saved · read-only
             </span>
           ) : (
-            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
+            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
               Open
             </span>
           )}
-          <span className="text-xs">{room.members.length} / 2 members</span>
+          <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs">{room.members.length} / 2 members</span>
           {!saved && <ConnectionBadge connection={connection} />}
         </div>
       </div>
 
-      <div>
-        <p className="mb-2 text-xs font-semibold tracking-wider text-neutral-500 uppercase">Members</p>
-        <ul className="space-y-1">
-          {room.members.map((m) => (
-            <li key={m.id} className="group/member flex min-h-11 items-center gap-3 rounded-xl px-1">
-              <Avatar name={m.displayName} id={m.userId} size="md" />
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-1">
-                  <p className="truncate text-sm font-medium">
-                    {m.displayName}
-                    {m.userId === viewer.userId && <span className="font-normal text-neutral-400"> (you)</span>}
+      <Section title="Members">
+        <ul className="space-y-0.5">
+          {room.members.map((m) => {
+            const online = isOnline(m, viewer, now);
+            const isMe = m.userId === viewer.userId;
+            return (
+              <li key={m.id} className="group/member flex min-h-12 items-center gap-3 rounded-xl px-2 py-1.5">
+                <span className="relative">
+                  <Avatar name={m.displayName} id={m.userId} size="md" />
+                  <span
+                    className={`absolute -right-0.5 -bottom-0.5 size-3 rounded-full ring-2 ring-neutral-950 ${online ? "bg-emerald-400" : "bg-neutral-600"}`}
+                  />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <p className="truncate text-sm font-medium">
+                      {m.displayName}
+                      {isMe && <span className="font-normal text-neutral-400"> (you)</span>}
+                    </p>
+                    {m.isOwner && (
+                      <span className="shrink-0 rounded-md bg-amber-500/15 px-1.5 py-px text-[10px] font-semibold text-amber-300">
+                        Owner
+                      </span>
+                    )}
+                    {isMe && !saved && (
+                      <button
+                        type="button"
+                        onClick={() => props.onEditDisplayName(m)}
+                        className="grid size-7 shrink-0 place-items-center rounded-md text-neutral-400 opacity-100 transition hover:bg-white/10 hover:text-white focus-visible:opacity-100 md:opacity-0 md:group-hover/member:opacity-100"
+                        aria-label="Edit your name in this room"
+                        title="Edit name in this room"
+                      >
+                        <PencilIcon className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <p className={`text-xs ${online ? "text-emerald-400" : "text-neutral-500"}`}>
+                    {isMe ? "Online" : memberActivity(m.lastSeenAt, m.pending, now)}
                   </p>
-                  {m.userId === viewer.userId && !saved && (
+                  {viewer.isOwner && m.pending && !saved && (
                     <button
                       type="button"
-                      onClick={() => props.onEditDisplayName(m)}
-                      className="grid size-7 shrink-0 place-items-center rounded-md text-neutral-400 opacity-100 transition hover:bg-white/10 hover:text-white focus-visible:opacity-100 md:opacity-0 md:group-hover/member:opacity-100"
-                      aria-label="Edit your name in this room"
-                      title="Edit name in this room"
+                      onClick={() => props.onShowMemberCode(m)}
+                      className="mt-0.5 text-xs font-semibold text-indigo-300 hover:text-indigo-200"
                     >
-                      <PencilIcon className="size-3.5" />
+                      Show code
                     </button>
                   )}
                 </div>
-                <p className={`text-xs ${m.lastSeenAt && now - new Date(m.lastSeenAt).getTime() < ONLINE_WINDOW_MS ? "text-emerald-400" : "text-neutral-500"}`}>
-                  {m.userId === viewer.userId ? "You · Online" : `${m.isOwner ? "Owner · " : ""}${memberActivity(m.lastSeenAt, m.pending, now)}`}
-                </p>
-                {viewer.isOwner && m.pending && !saved && (
-                  <button
-                    type="button"
-                    onClick={() => props.onShowMemberCode(m)}
-                    className="mt-0.5 text-xs font-semibold text-indigo-300 hover:text-indigo-200"
-                  >
-                    Show code
-                  </button>
-                )}
-              </div>
-              {viewer.isOwner && !m.isOwner && !saved && (
-                <button
-                  type="button"
-                  onClick={() => props.onRemoveMember(m)}
-                  className="grid size-10 place-items-center rounded-full text-neutral-400 hover:bg-red-500/10 hover:text-red-400"
-                  aria-label={`Remove ${m.displayName}`}
-                  title="Remove member"
-                >
-                  <UserMinusIcon className="size-[18px]" />
-                </button>
-              )}
-            </li>
-          ))}
+              </li>
+            );
+          })}
           {!other && !saved && (
-            <li className="rounded-xl border border-dashed border-white/15 px-3 py-3 text-xs leading-relaxed text-neutral-400">
+            <li className="m-1 rounded-xl border border-dashed border-white/15 px-3 py-3 text-xs leading-relaxed text-neutral-400">
               {viewer.isOwner
-                ? "Waiting for your friend. Share the room link below, or add them yourself and send them a code."
-                : "Waiting for your friend to join. Share the room link below."}
+                ? "Waiting for your friend. Share the room link, or add them yourself and send them a code."
+                : "Waiting for your friend to join. Share the room link."}
               {viewer.isOwner && (
                 <button
                   type="button"
@@ -204,95 +271,221 @@ export function RoomPanel(props: RoomPanelProps) {
             </li>
           )}
         </ul>
-      </div>
-
-      <div>
-        <p className="mb-2 text-xs font-semibold tracking-wider text-neutral-500 uppercase">Chat color</p>
-        <div role="radiogroup" aria-label="Color of your messages" className="flex flex-wrap gap-2">
-          {BUBBLE_COLORS.map((c) => {
-            const selected = c.id === props.bubbleColorId;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                aria-label={c.name}
-                title={c.name}
-                onClick={() => props.onBubbleColor(c.id)}
-                style={{ backgroundColor: c.bg, color: c.fg }}
-                className={`grid size-9 place-items-center rounded-full ring-2 ring-offset-2 ring-offset-neutral-950 transition hover:scale-110 ${
-                  selected ? "ring-white" : "ring-transparent"
-                }`}
-              >
-                {selected && <CheckIcon className="size-4" />}
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-2 text-xs text-neutral-500">Only changes how your messages look on your screen.</p>
-      </div>
-
-      <TimeZonePicker
-        preference={props.timeZonePreference}
-        detected={props.detectedTimeZone}
-        onChange={props.onTimeZone}
-      />
-
-      <AccessCodeCard code={props.accessCode} tone="dark" onNotice={props.onCodeNotice} />
+      </Section>
 
       {!saved && (
-      <div className="space-y-1">
-        {/* On phones these two live here instead of the crowded header. */}
-        <div className="sm:hidden">
-          <PanelButton icon={<RefreshIcon />} onClick={props.onRefresh}>
-            Refresh chat
-          </PanelButton>
-        </div>
-        <p className="mb-2 text-xs font-semibold tracking-wider text-neutral-500 uppercase">Invite</p>
-        <PanelButton icon={<CopyIcon />} onClick={props.onCopyLink}>
-          Copy Link
-        </PanelButton>
-        {canShare && (
-          <PanelButton icon={<ShareIcon />} onClick={props.onShare}>
-            Share Room
-          </PanelButton>
-        )}
-      </div>
+        <Section title="Invite">
+          {/* On phones refresh lives here instead of the crowded header. */}
+          <div className="sm:hidden">
+            <ActionRow icon={<RefreshIcon />} tone="emerald" title="Refresh chat" hint="Load the latest messages" onClick={props.onRefresh} />
+          </div>
+          <ActionRow icon={<CopyIcon />} tone="sky" title="Copy room link" hint="Send it to your friend so they can join" onClick={props.onCopyLink} />
+          {canShare && (
+            <ActionRow icon={<ShareIcon />} tone="sky" title="Share room" hint="Share the link through another app" onClick={props.onShare} />
+          )}
+        </Section>
       )}
 
       {viewer.isOwner && (
-        <div className="space-y-1">
-          <p className="mb-2 text-xs font-semibold tracking-wider text-neutral-500 uppercase">Manage room</p>
-          <Link
-            href="/rooms"
-            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-neutral-200 transition hover:bg-white/10"
-          >
-            <MessageIcon className="size-[18px] shrink-0" />
-            My Rooms
-          </Link>
+        <Section title="Manage room">
+          <ActionRow icon={<MessageIcon />} tone="indigo" title="My Rooms" hint="See all the rooms you created or joined" href="/rooms" />
           {!saved && (
             <>
-              <PanelButton icon={<PencilIcon />} onClick={props.onRename}>
-                Rename
-              </PanelButton>
-              <PanelButton icon={<ArchiveIcon />} onClick={props.onCloseRoom}>
-                Save &amp; Close Room
-              </PanelButton>
+              <ActionRow icon={<PencilIcon />} tone="indigo" title="Rename room" hint="Change the name shown at the top" onClick={props.onRename} />
+              <ActionRow
+                icon={<ArchiveIcon />}
+                tone="amber"
+                title="Save & close room"
+                hint="Stop the chat; only you can still read it"
+                onClick={props.onCloseRoom}
+              />
             </>
           )}
-          {other && !saved && (
-            <PanelButton icon={<UserMinusIcon />} onClick={() => props.onRemoveMember(other)} danger>
-              Remove Member
-            </PanelButton>
-          )}
-          <PanelButton icon={<TrashIcon />} onClick={props.onClearChat} danger>
-            Delete All Chat
-          </PanelButton>
-          <PanelButton icon={<TrashIcon />} onClick={props.onDeleteRoom} danger>
-            Delete Room
-          </PanelButton>
+        </Section>
+      )}
+
+      <Section title="Personalize">
+        <div className="space-y-5 p-2">
+          <div>
+            <p className="mb-2 text-xs font-semibold tracking-wider text-neutral-500 uppercase">Chat color</p>
+            <div role="radiogroup" aria-label="Color of your messages" className="flex flex-wrap gap-2">
+              {BUBBLE_COLORS.map((c) => {
+                const selected = c.id === props.bubbleColorId;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={c.name}
+                    title={c.name}
+                    onClick={() => props.onBubbleColor(c.id)}
+                    style={{ backgroundColor: c.bg, color: c.fg }}
+                    className={`grid size-8 place-items-center rounded-full ring-2 ring-offset-2 ring-offset-neutral-950 transition hover:scale-110 ${
+                      selected ? "ring-white" : "ring-transparent"
+                    }`}
+                  >
+                    {selected && <CheckIcon className="size-4" />}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-neutral-500">Only changes how your messages look on your screen.</p>
+          </div>
+
+          <TimeZonePicker
+            preference={props.timeZonePreference}
+            detected={props.detectedTimeZone}
+            onChange={props.onTimeZone}
+          />
+
+          <AccessCodeCard code={props.accessCode} tone="dark" onNotice={props.onCodeNotice} />
         </div>
+      </Section>
+
+      {viewer.isOwner && (
+        <Section title="Danger zone" danger>
+          {other && !saved && (
+            <ActionRow
+              icon={<UserMinusIcon />}
+              tone="danger"
+              title={`Remove ${other.displayName}`}
+              hint="They can't read or send messages here anymore"
+              onClick={() => props.onRemoveMember(other)}
+            />
+          )}
+          <ActionRow
+            icon={<EraserIcon />}
+            tone="danger"
+            title="Delete all chat"
+            hint="Erase every message and file; the room stays"
+            onClick={props.onClearChat}
+          />
+          <ActionRow
+            icon={<TrashIcon />}
+            tone="danger"
+            title="Delete room"
+            hint="Remove the room and everything in it forever"
+            onClick={props.onDeleteRoom}
+          />
+        </Section>
+      )}
+    </div>
+  );
+}
+
+// ---------- Collapsed desktop sidebar: an icon rail ----------
+
+function RailButton({
+  label,
+  icon,
+  onClick,
+  href,
+  danger,
+}: {
+  label: string;
+  icon: ReactNode;
+  onClick?: () => void;
+  href?: string;
+  danger?: boolean;
+}) {
+  const cls = `group/rail relative grid size-10 shrink-0 place-items-center rounded-xl transition [&>svg]:size-5 ${
+    danger ? "text-red-400 hover:bg-red-500/15" : "text-neutral-400 hover:bg-white/10 hover:text-white"
+  }`;
+  const tip = (
+    <span
+      role="tooltip"
+      className="pointer-events-none absolute top-1/2 left-full z-50 ml-3 -translate-y-1/2 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white opacity-0 shadow-lg ring-1 ring-white/10 transition group-hover/rail:opacity-100 group-focus-visible/rail:opacity-100"
+    >
+      {label}
+    </span>
+  );
+  return href ? (
+    <Link href={href} className={cls} aria-label={label}>
+      {icon}
+      {tip}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={cls} aria-label={label}>
+      {icon}
+      {tip}
+    </button>
+  );
+}
+
+const RailDivider = () => <span className="my-1.5 h-px w-8 shrink-0 bg-white/10" />;
+
+/** What the desktop sidebar shows when it is collapsed: every action stays one click away. */
+export function RoomRail(props: RoomPanelProps & { onExpand: () => void }) {
+  const { room, viewer, canShare } = props;
+  const now = useNow();
+  const other = room.members.find((m) => m.userId !== viewer.userId);
+  const saved = room.status === "closed";
+
+  return (
+    <div className="flex h-full flex-col items-center gap-1 py-3">
+      <Link
+        href="/"
+        className="mb-1 grid size-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+        aria-label="Home"
+        title="Home"
+      >
+        <MessageIcon className="size-5" />
+      </Link>
+      <RailButton label="Show sidebar" icon={<PanelLeftOpenIcon />} onClick={props.onExpand} />
+      <RailDivider />
+
+      {room.members.map((m) => (
+        <button
+          key={m.id}
+          type="button"
+          onClick={props.onExpand}
+          className="group/rail relative grid size-10 shrink-0 place-items-center rounded-xl transition hover:bg-white/10"
+          aria-label={m.displayName}
+        >
+          <span className="relative">
+            <Avatar name={m.displayName} id={m.userId} size="sm" />
+            <span
+              className={`absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-neutral-950 ${
+                isOnline(m, viewer, now) ? "bg-emerald-400" : "bg-neutral-600"
+              }`}
+            />
+          </span>
+          <span
+            role="tooltip"
+            className="pointer-events-none absolute top-1/2 left-full z-50 ml-3 -translate-y-1/2 rounded-lg bg-neutral-900 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white opacity-0 shadow-lg ring-1 ring-white/10 transition group-hover/rail:opacity-100 group-focus-visible/rail:opacity-100"
+          >
+            {m.displayName}
+            {m.userId === viewer.userId ? " (you)" : ` · ${memberActivity(m.lastSeenAt, m.pending, now)}`}
+          </span>
+        </button>
+      ))}
+      {viewer.isOwner && !other && !saved && (
+        <RailButton label="Add member" icon={<UserPlusIcon />} onClick={props.onAddMember} />
+      )}
+      <RailDivider />
+
+      {!saved && <RailButton label="Copy room link" icon={<CopyIcon />} onClick={props.onCopyLink} />}
+      {!saved && canShare && <RailButton label="Share room" icon={<ShareIcon />} onClick={props.onShare} />}
+      {viewer.isOwner && <RailButton label="My Rooms" icon={<MessageIcon />} href="/rooms" />}
+      {viewer.isOwner && !saved && (
+        <>
+          <RailButton label="Rename room" icon={<PencilIcon />} onClick={props.onRename} />
+          <RailButton label="Save & close room" icon={<ArchiveIcon />} onClick={props.onCloseRoom} />
+        </>
+      )}
+
+      <span className="flex-1" />
+      <RailButton label="Color, time zone & access code" icon={<SlidersIcon />} onClick={props.onExpand} />
+      {viewer.isOwner && (
+        <>
+          <RailDivider />
+          {other && !saved && (
+            <RailButton label={`Remove ${other.displayName}`} icon={<UserMinusIcon />} onClick={() => props.onRemoveMember(other)} danger />
+          )}
+          <RailButton label="Delete all chat" icon={<EraserIcon />} onClick={props.onClearChat} danger />
+          <RailButton label="Delete room" icon={<TrashIcon />} onClick={props.onDeleteRoom} danger />
+        </>
       )}
     </div>
   );
