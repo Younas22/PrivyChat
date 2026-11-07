@@ -109,7 +109,30 @@ export type RoomEvent =
   | { type: "room:deleted" }
   /** The owner deleted every message in the room. */
   | { type: "chat:cleared" }
-  | { type: "typing"; userId: string; displayName: string; typing: boolean };
+  | { type: "typing"; userId: string; displayName: string; typing: boolean }
+  /** WebRTC signaling for watching a video recording live (nothing is stored). */
+  | LiveSignal;
+
+/**
+ * start/end: a member began/stopped a live video recording (start repeats as a heartbeat).
+ * watch/leave: a viewer asks to join / stops watching. offer/answer: SDP exchange.
+ */
+export type LiveKind = "start" | "end" | "watch" | "leave" | "offer" | "answer";
+
+export interface LiveSignal {
+  type: "live";
+  from: string;
+  fromName: string;
+  /** Target member, or null for everyone in the room. */
+  to: string | null;
+  sessionId: string;
+  kind: LiveKind;
+  /** SDP (JSON), possibly split into parts to stay under the realtime payload limit. */
+  data?: string;
+  msgId?: string;
+  part?: number;
+  parts?: number;
+}
 
 export interface MessagesPage {
   messages: ChatMessage[];

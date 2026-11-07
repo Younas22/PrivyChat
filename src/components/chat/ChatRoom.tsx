@@ -49,6 +49,9 @@ import { formatDate } from "@/lib/client/time";
 import { analyzeAudio, type AudioMeta } from "@/lib/client/audioAnalysis";
 import { categoryOf } from "@/lib/client/format";
 import { useRoomEvents } from "./useRoomEvents";
+import { useLiveVideo } from "./useLiveVideo";
+import { VideoRecorder } from "./VideoRecorder";
+import { LiveViewer } from "./LiveViewer";
 
 interface ChatRoomProps {
   initialRoom: RoomInfo;
@@ -175,6 +178,11 @@ function ChatRoomInner({
 
   const isSaved = room.status === "closed";
 
+  // ---------- video recording + live view ----------
+  const [videoOpen, setVideoOpen] = useState(false);
+  const live = useLiveVideo(base, viewer.userId);
+  const { handleSignal: handleLiveSignal, closeWatch } = live;
+
   /** Owner keeps a read-only view of a saved room; everyone else is locked out. */
   const onRoomClosed = useCallback(() => {
     if (viewer.isOwner) {
@@ -286,6 +294,9 @@ function ChatRoomInner({
           setEditingMessage(null);
           if (!viewer.isOwner) toast("The room owner cleared the chat", "info");
           break;
+        case "live":
+          handleLiveSignal(event);
+          break;
         case "typing":
           if (event.userId === viewer.userId) break;
           if (typingExpiry.current) clearTimeout(typingExpiry.current);
@@ -298,7 +309,7 @@ function ChatRoomInner({
           break;
       }
     },
-    [viewer.userId, viewer.isOwner, toast, onRoomClosed],
+    [viewer.userId, viewer.isOwner, toast, onRoomClosed, handleLiveSignal],
   );
 
   const resync = useCallback(async () => {
@@ -1015,8 +1026,23 @@ function ChatRoomInner({
           onTyping={onUserTyping}
           onSendFile={onSendFile}
           onError={(m) => toast(m, "error")}
+          onRecordVideo={() => setVideoOpen(true)}
         />
         )}
+
+        {videoOpen && !isSaved && (
+          <VideoRecorder
+            maxBytes={limits.video}
+            liveAvailable={room.members.length > 1}
+            viewerCount={live.viewerCount}
+            onStartLive={live.startBroadcast}
+            onStopLive={live.stopBroadcast}
+            onSend={(file) => onSendFile(file, "")}
+            onClose={() => setVideoOpen(false)}
+            onError={(m) => toast(m, "error")}
+          />
+        )}
+        {live.watch && !isSaved && status === "active" && <LiveViewer watch={live.watch} onClose={closeWatch} />}
       </section>
 
       {/* Mobile / tablet room drawer */}

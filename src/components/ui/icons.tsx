@@ -245,6 +245,43 @@ export const MicIcon = (p: IconProps) => (
     <line x1="12" y1="18" x2="12" y2="22" />
   </Icon>
 );
+export const VideoIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 11" />
+    <rect x="2" y="6" width="14" height="12" rx="2" />
+  </Icon>
+);
+export const SwitchCameraIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" />
+    <path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5" />
+    <circle cx="12" cy="12" r="3" />
+    <path d="m18 22-3-3 3-3" />
+    <path d="m6 2 3 3-3 3" />
+  </Icon>
+);
+export const VolumeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M11 5 6 9H2v6h4l5 4V5z" />
+    <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+    <path d="M19 5a10 10 0 0 1 0 14" />
+  </Icon>
+);
+export const VolumeOffIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M11 5 6 9H2v6h4l5 4V5z" />
+    <line x1="22" y1="9" x2="16" y2="15" />
+    <line x1="16" y1="9" x2="22" y2="15" />
+  </Icon>
+);
+export const MaximizeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M15 3h6v6" />
+    <path d="M9 21H3v-6" />
+    <path d="M21 3l-7 7" />
+    <path d="M3 21l7-7" />
+  </Icon>
+);
 export const PlayIcon = (p: IconProps) => (
   <Icon {...p} fill="currentColor">
     <polygon points="6 3 20 12 6 21 6 3" />

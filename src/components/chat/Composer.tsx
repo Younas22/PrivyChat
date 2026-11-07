@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Theme } from "emoji-picker-react";
 import type { ChatMessage } from "@/lib/types";
 import { ACCEPT_ATTR, categoryOf, formatBytes } from "@/lib/client/format";
-import { FileIcon, MicIcon, PaperclipIcon, ReplyIcon, SendIcon, SmileIcon, TrashIcon, XIcon } from "@/components/ui/icons";
+import { FileIcon, MicIcon, PaperclipIcon, ReplyIcon, SendIcon, SmileIcon, TrashIcon, VideoIcon, XIcon } from "@/components/ui/icons";
 import { useVoiceRecorder } from "./useVoiceRecorder";
 import { useChatTheme } from "./useChatTheme";
 import type { AudioMeta } from "@/lib/client/audioAnalysis";
@@ -32,6 +32,8 @@ interface ComposerProps {
   onTyping?: () => void;
   onSendFile: (file: File, caption: string, audioMeta?: AudioMeta) => void;
   onError: (message: string) => void;
+  /** Opens the camera to record a video message (hidden when unsupported). */
+  onRecordVideo?: () => void;
 }
 
 function replyLabel(m: ChatMessage) {
@@ -50,6 +52,7 @@ export function Composer({
   onTyping,
   onSendFile,
   onError,
+  onRecordVideo,
 }: ComposerProps) {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -274,6 +277,18 @@ export function Composer({
         >
           <PaperclipIcon className="size-5" />
         </button>
+        {onRecordVideo && voice.supported && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onRecordVideo}
+            className="grid size-10 shrink-0 place-items-center rounded-xl text-tr-muted transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+            aria-label="Record a video"
+            title="Record a video"
+          >
+            <VideoIcon className="size-5" />
+          </button>
+        )}
         <input
           ref={fileInputRef}
           type="file"
