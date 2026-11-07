@@ -4,10 +4,25 @@ import { errorResponse, Errors } from "@/lib/server/errors";
 import { rateLimit } from "@/lib/server/rate-limit";
 import { publish } from "@/lib/server/realtime";
 import { requireMember } from "@/lib/server/rooms";
+import { LIVE_REACTIONS } from "@/lib/types";
 
 const Body = z.object({
   sessionId: z.string().regex(/^[A-Za-z0-9]{8,32}$/),
-  kind: z.enum(["start", "end", "watch", "leave", "offer", "answer", "relay"]), // "chunk" is server-only
+  // "chunk" is server-only (sent by the chunk upload route).
+  kind: z.enum([
+    "start",
+    "end",
+    "watch",
+    "leave",
+    "offer",
+    "answer",
+    "relay",
+    "react",
+    "guest-offer",
+    "guest-answer",
+    "guest-relay",
+    "guest-leave",
+  ]),
   to: z.string().min(1).max(64).nullish(),
   data: z.string().max(6000).optional(),
   msgId: z.string().regex(/^[A-Za-z0-9]{8,32}$/).optional(),
@@ -25,6 +40,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ roomCod
     if (!parsed.success) throw Errors.badRequest("Invalid live signal.");
     const { to, ...rest } = parsed.data;
     if (to && !room.members.some((m) => m.userId === to)) throw Errors.badRequest("Unknown member.");
+    if (rest.kind === "react" && !(LIVE_REACTIONS as readonly string[]).includes(rest.data ?? "")) {
+      throw Errors.badRequest("Unsupported reaction.");
+    }
     await publish(room, { type: "live", from: user.id, fromName: membership.displayName, to: to ?? null, ...rest });
     return new NextResponse(null, { status: 204 });
   } catch (err) {

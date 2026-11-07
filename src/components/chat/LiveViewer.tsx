@@ -1,13 +1,52 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MaximizeIcon, VolumeIcon, VolumeOffIcon, XIcon } from "@/components/ui/icons";
+import { MaximizeIcon, VideoIcon, VolumeIcon, VolumeOffIcon, XIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
-import type { LiveWatch } from "./useLiveVideo";
+import { LIVE_REACTIONS } from "@/lib/types";
+import type { GuestStatus, LiveWatch } from "./useLiveVideo";
+import { FloatingReactions, useFloatingReactions } from "./FloatingReactions";
+
+const REACT_GAP_MS = 250; // keeps rapid taps under the server's rate limit
 
 /** Floating window showing another member's video recording as it happens. */
-export function LiveViewer({ watch, onClose }: { watch: LiveWatch; onClose: () => void }) {
+export function LiveViewer({
+  watch,
+  onClose,
+  onReact,
+  selfStream,
+  cameraStatus,
+  onJoinCamera,
+  onLeaveCamera,
+}: {
+  watch: LiveWatch;
+  onClose: () => void;
+  onReact: (emoji: string) => void;
+  /** My own camera while I've joined the video. */
+  selfStream: MediaStream | null;
+  cameraStatus: GuestStatus;
+  onJoinCamera: () => void;
+  onLeaveCamera: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const selfRef = useRef<HTMLVideoElement>(null);
+  const cameraOn = cameraStatus !== "idle";
+
+  useEffect(() => {
+    const el = selfRef.current;
+    if (!el) return;
+    el.srcObject = selfStream;
+    if (selfStream) el.play().catch(() => {});
+  }, [selfStream]);
+  const floating = useFloatingReactions();
+  const lastReactAt = useRef(0);
+
+  const react = (emoji: string, now: number) => {
+    if (now - lastReactAt.current < REACT_GAP_MS) return;
+    lastReactAt.current = now;
+    floating.add(emoji); // instant feedback on my side
+    onReact(emoji);
+  };
   // Starts muted so the browser allows autoplay; one tap turns the sound on.
   const [muted, setMuted] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -55,6 +94,26 @@ export function LiveViewer({ watch, onClose }: { watch: LiveWatch; onClose: () =
           LIVE
         </span>
         <span className="min-w-0 flex-1 truncate text-xs font-medium">{watch.fromName}</span>
+        {watch.status === "live" && (
+          <button
+            type="button"
+            onClick={() => {
+              if (cameraOn) return onLeaveCamera();
+              // Joining is a conversation: turn their sound on too (this tap allows it).
+              if (muted) toggleSound();
+              onJoinCamera();
+            }}
+            disabled={cameraStatus === "starting"}
+            className={`grid size-8 place-items-center rounded-full transition disabled:opacity-60 ${
+              cameraOn ? "bg-red-600 hover:bg-red-500" : "hover:bg-white/15"
+            }`}
+            aria-label={cameraOn ? "Turn my camera off" : "Join with my camera"}
+            aria-pressed={cameraOn}
+            title={cameraOn ? "Turn my camera off" : "Join with my camera"}
+          >
+            {cameraStatus === "starting" ? <Spinner className="size-4" /> : <VideoIcon className="size-4" />}
+          </button>
+        )}
         <button
           type="button"
           onClick={toggleSound}
@@ -88,6 +147,28 @@ export function LiveViewer({ watch, onClose }: { watch: LiveWatch; onClose: () =
           autoPlay
           className={`size-full object-contain ${showVideo ? "" : "invisible"}`}
         />
+        {selfStream && (
+          <div
+            className={`animate-fade-in absolute bottom-2 left-2 overflow-hidden rounded-lg bg-black ring-1 ring-white/70 ${
+              expanded ? "w-32 sm:w-44" : "w-14 sm:w-20"
+            }`}
+          >
+            <video
+              ref={selfRef}
+              muted
+              playsInline
+              autoPlay
+              className="aspect-[3/4] w-full object-cover"
+              style={{ transform: "scaleX(-1)" }}
+            />
+            {cameraStatus === "connecting" && (
+              <span className="absolute inset-0 grid place-items-center bg-black/40">
+                <Spinner className="size-4 text-white" />
+              </span>
+            )}
+          </div>
+        )}
+        <FloatingReactions items={floating.items} size={expanded ? "lg" : "sm"} />
         {!showVideo && (
           <div className="absolute inset-0 grid place-items-center p-3 text-center text-xs text-white/70">
             {watch.status === "failed" ? (
@@ -101,6 +182,27 @@ export function LiveViewer({ watch, onClose }: { watch: LiveWatch; onClose: () =
           </div>
         )}
       </div>
+      {watch.status !== "failed" && (
+        <div
+          className={`scrollbar-dark flex gap-0.5 overflow-x-auto px-1.5 py-1.5 ${expanded ? "justify-center pb-3" : ""}`}
+          role="group"
+          aria-label={`Send ${watch.fromName} a reaction`}
+        >
+          {LIVE_REACTIONS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={(e) => react(emoji, e.timeStamp)}
+              className={`grid shrink-0 place-items-center rounded-full transition hover:bg-white/15 active:scale-90 ${
+                expanded ? "size-11 text-2xl" : "size-8 text-lg"
+              }`}
+              aria-label={`React ${emoji}`}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

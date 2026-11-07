@@ -7,6 +7,7 @@
   --animate-fade-in: fade-in 0.18s ease-out;
   --animate-slide-up: slide-up 0.22s ease-out;
   --animate-drawer-in: drawer-in 0.22s ease-out;
+  --animate-float-up: float-up 2.6s ease-out forwards;
 
   /* Chat room ("tr-") dark palette */
   --color-tr-bg: #080714;
@@ -30,6 +31,20 @@
 @keyframes drawer-in {
   from { transform: translateX(-100%); }
   to { transform: translateX(0); }
+}
+/* Live-video emoji reaction: rises, sways and fades out. */
+@keyframes float-up {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  12% { opacity: 1; transform: translate(0, -24px) scale(1.15); }
+  50% { transform: translate(var(--sway, 12px), -45vh) scale(1); }
+  100% { opacity: 0; transform: translate(0, -80vh) scale(0.9); }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes float-up {
+    0% { opacity: 0; }
+    20%, 70% { opacity: 1; }
+    100% { opacity: 0; }
+  }
 }
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(12px); }

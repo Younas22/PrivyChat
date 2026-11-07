@@ -118,8 +118,28 @@ export type RoomEvent =
  * watch/leave: a viewer asks to join / stops watching. offer/answer: SDP exchange.
  * relay: a viewer that can't connect directly asks for the server relay.
  * chunk: (server only) a relay piece was stored; data is {"seq","mime"}.
+ * react: a viewer sent an emoji to the recorder; data is one of LIVE_REACTIONS.
+ * guest-*: a viewer joins with their own camera (two-way). guest-offer/answer: SDP exchange
+ * (viewer offers); guest-relay: the guest's video comes through the server relay instead,
+ * data is the guest's relay session id; guest-leave: the guest turned their camera off.
  */
-export type LiveKind = "start" | "end" | "watch" | "leave" | "offer" | "answer" | "relay" | "chunk";
+export type LiveKind =
+  | "start"
+  | "end"
+  | "watch"
+  | "leave"
+  | "offer"
+  | "answer"
+  | "relay"
+  | "chunk"
+  | "react"
+  | "guest-offer"
+  | "guest-answer"
+  | "guest-relay"
+  | "guest-leave";
+
+/** Emojis a viewer can send while watching a live recording (validated server-side). */
+export const LIVE_REACTIONS = ["❤️", "😂", "😮", "👍", "👏", "🔥", "😍", "😢"] as const;
 
 export interface LiveSignal {
   type: "live";

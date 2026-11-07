@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { SendIcon, SwitchCameraIcon, TrashIcon, XIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
+import { createComposite, type Composite } from "@/lib/client/videoComposite";
+import { FloatingReactions, useFloatingReactions } from "./FloatingReactions";
+import type { GuestFeed, LiveReaction } from "./useLiveVideo";
 
 const VIDEO_BPS = 1_500_000;
 const AUDIO_BPS = 96_000;
@@ -23,6 +26,10 @@ interface VideoRecorderProps {
   /** Someone else is in the room who could watch live. */
   liveAvailable: boolean;
   viewerCount: number;
+  /** Latest emoji sent by someone watching live. */
+  reaction: LiveReaction | null;
+  /** A viewer who joined with their camera (shown picture-in-picture and recorded too). */
+  guest: GuestFeed | null;
   onStartLive: (stream: MediaStream) => void;
   onStopLive: () => void;
   onSend: (file: File) => void;
@@ -39,6 +46,8 @@ export function VideoRecorder({
   maxBytes,
   liveAvailable,
   viewerCount,
+  reaction,
+  guest,
   onStartLive,
   onStopLive,
   onSend,
@@ -53,6 +62,8 @@ export function VideoRecorder({
   const [result, setResult] = useState<{ file: File; url: string } | null>(null);
   const [cameraCount, setCameraCount] = useState(0);
   const previewRef = useRef<HTMLVideoElement>(null);
+  const guestRef = useRef<HTMLVideoElement>(null);
+  const compositeRef = useRef<Composite | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startedAtRef = useRef(0);
@@ -68,6 +79,20 @@ export function VideoRecorder({
     Math.min(MAX_SECONDS_CAP, Math.floor((maxBytes * 0.9) / ((VIDEO_BPS + AUDIO_BPS) / 8))),
   );
   const needCamera = phase !== "review";
+
+  // Viewers' emojis float up over the camera while recording.
+  const floating = useFloatingReactions();
+  const [lastReaction, setLastReaction] = useState<LiveReaction | null>(null);
+  const seenReaction = useRef(reaction?.id ?? 0);
+  const addFloating = floating.add;
+  useEffect(() => {
+    if (!reaction || reaction.id === seenReaction.current) return;
+    seenReaction.current = reaction.id;
+    if (phase !== "recording") return;
+    addFloating(reaction.emoji, reaction.fromName);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- announces an external event
+    setLastReaction(reaction);
+  }, [reaction, phase, addFloating]);
 
   // Camera + mic (re-acquired when flipping cameras or retaking).
   useEffect(() => {
@@ -119,6 +144,24 @@ export function VideoRecorder({
     if (stream) el.play().catch(() => {});
   }, [stream]);
 
+  // The guest's camera: shown picture-in-picture, heard, and mixed into the recording.
+  const showGuest = phase === "recording" && !!guest;
+  useEffect(() => {
+    const el = guestRef.current;
+    if (!el || !guest) {
+      compositeRef.current?.setGuestAudio(null);
+      return;
+    }
+    if (guest.player) {
+      guest.player.attach(el);
+    } else {
+      if (el.getAttribute("src")) el.removeAttribute("src");
+      el.srcObject = guest.stream;
+    }
+    el.play().catch(() => {});
+    compositeRef.current?.setGuestAudio(guest.player ? { element: el } : { stream: guest.stream });
+  }, [guest, showGuest]);
+
   // Release the recorded clip's object URL.
   useEffect(() => {
     if (!result) return;
@@ -132,23 +175,41 @@ export function VideoRecorder({
     const rec = recRef.current;
     recRef.current = null;
     if (rec && rec.state !== "inactive") rec.stop();
+    else stopComposite();
     callbacks.current.onStopLive();
   };
 
+  const stopComposite = () => {
+    compositeRef.current?.stop();
+    compositeRef.current = null;
+  };
+
   // Leaving mid-recording discards it and ends the live stream.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount only; stopRecorder uses refs
   useEffect(() => () => stopRecorder(true), []);
 
   const start = () => {
     if (!stream || phase !== "preview") return;
     const mimeType = MIME_CANDIDATES.find((t) => MediaRecorder.isTypeSupported?.(t));
+    // When others can watch (and join with their camera), record a composite so a guest who
+    // joins later appears in the saved video too. Otherwise record the camera as-is.
+    let source = stream;
+    if (shareLive && liveAvailable && previewRef.current) {
+      const composite = createComposite(previewRef.current, () => guestRef.current, stream);
+      if (composite) {
+        compositeRef.current = composite;
+        source = composite.stream;
+      }
+    }
     let rec: MediaRecorder;
     try {
-      rec = new MediaRecorder(stream, {
+      rec = new MediaRecorder(source, {
         ...(mimeType ? { mimeType } : {}),
         videoBitsPerSecond: VIDEO_BPS,
         audioBitsPerSecond: AUDIO_BPS,
       });
     } catch {
+      stopComposite();
       return onError("Couldn't start recording. Please try again.");
     }
     chunksRef.current = [];
@@ -157,6 +218,7 @@ export function VideoRecorder({
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
     rec.onstop = () => {
+      stopComposite();
       if (discardRef.current) return;
       const took = Date.now() - startedAtRef.current;
       const blob = new Blob(chunksRef.current, { type: rec.mimeType || mimeType || "video/webm" });
@@ -236,7 +298,8 @@ export function VideoRecorder({
               </span>
               {live && (
                 <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold tracking-wide">
-                  LIVE · {viewerCount > 0 ? `${viewerCount} watching` : "waiting for viewers"}
+                  LIVE ·{" "}
+                  {guest ? `with ${guest.name}` : viewerCount > 0 ? `${viewerCount} watching` : "waiting for viewers"}
                 </span>
               )}
             </>
@@ -275,6 +338,18 @@ export function VideoRecorder({
                 <Spinner className="size-8 text-white/70" />
               </div>
             )}
+            {showGuest && (
+              <div className="animate-fade-in absolute top-3 right-3 w-[30%] max-w-52 min-w-28 overflow-hidden rounded-xl bg-black shadow-2xl ring-2 ring-white/80">
+                <video ref={guestRef} playsInline autoPlay className="aspect-[3/4] w-full object-cover" />
+                <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 px-2 pt-3 pb-1 text-[11px] font-medium">
+                  {guest?.name}
+                </span>
+              </div>
+            )}
+            {phase === "recording" && <FloatingReactions items={floating.items} />}
+            <span className="sr-only" aria-live="polite">
+              {lastReaction ? `${lastReaction.fromName} reacted ${lastReaction.emoji}` : ""}
+            </span>
           </>
         )}
       </div>

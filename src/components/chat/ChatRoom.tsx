@@ -1035,6 +1035,8 @@ function ChatRoomInner({
             maxBytes={limits.video}
             liveAvailable={room.members.length > 1}
             viewerCount={live.viewerCount}
+            reaction={live.reaction}
+            guest={live.guest}
             onStartLive={live.startBroadcast}
             onStopLive={live.stopBroadcast}
             onSend={(file) => onSendFile(file, "")}
@@ -1042,7 +1044,21 @@ function ChatRoomInner({
             onError={(m) => toast(m, "error")}
           />
         )}
-        {live.watch && !isSaved && status === "active" && <LiveViewer watch={live.watch} onClose={closeWatch} />}
+        {live.watch && !isSaved && status === "active" && (
+          <LiveViewer
+            watch={live.watch}
+            onClose={closeWatch}
+            onReact={live.sendReaction}
+            selfStream={live.guestSelf}
+            cameraStatus={live.guestStatus}
+            onJoinCamera={() =>
+              void live.joinWithCamera().then((error) => {
+                if (error) toast(error, "error");
+              })
+            }
+            onLeaveCamera={live.leaveCamera}
+          />
+        )}
       </section>
 
       {/* Mobile / tablet room drawer */}
