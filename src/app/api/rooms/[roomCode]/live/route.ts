@@ -7,7 +7,7 @@ import { requireMember } from "@/lib/server/rooms";
 
 const Body = z.object({
   sessionId: z.string().regex(/^[A-Za-z0-9]{8,32}$/),
-  kind: z.enum(["start", "end", "watch", "leave", "offer", "answer"]),
+  kind: z.enum(["start", "end", "watch", "leave", "offer", "answer", "relay"]), // "chunk" is server-only
   to: z.string().min(1).max(64).nullish(),
   data: z.string().max(6000).optional(),
   msgId: z.string().regex(/^[A-Za-z0-9]{8,32}$/).optional(),

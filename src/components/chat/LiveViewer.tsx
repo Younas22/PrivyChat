@@ -15,9 +15,16 @@ export function LiveViewer({ watch, onClose }: { watch: LiveWatch; onClose: () =
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
+    if (watch.player) {
+      // Server relay: MediaSource playback.
+      watch.player.attach(el);
+      el.play().catch(() => {});
+      return;
+    }
+    if (el.getAttribute("src")) el.removeAttribute("src");
     el.srcObject = watch.stream;
     if (watch.stream) el.play().catch(() => {});
-  }, [watch.stream, expanded]);
+  }, [watch.stream, watch.player]);
 
   const toggleSound = () => {
     const el = videoRef.current;
@@ -29,7 +36,8 @@ export function LiveViewer({ watch, onClose }: { watch: LiveWatch; onClose: () =
     }
   };
 
-  const showVideo = watch.status !== "failed" && watch.stream;
+  const showVideo =
+    watch.status !== "failed" && (watch.mode === "relay" ? watch.status === "live" : !!watch.stream);
 
   return (
     <div
@@ -83,11 +91,11 @@ export function LiveViewer({ watch, onClose }: { watch: LiveWatch; onClose: () =
         {!showVideo && (
           <div className="absolute inset-0 grid place-items-center p-3 text-center text-xs text-white/70">
             {watch.status === "failed" ? (
-              "Couldn't connect to the live video. It will arrive as a message when they send it."
+              "Live video can't play on this device. It will arrive as a message when they send it."
             ) : (
               <span className="flex flex-col items-center gap-2">
                 <Spinner className="size-5" />
-                Connecting…
+                {watch.mode === "relay" ? "Loading live video…" : "Connecting…"}
               </span>
             )}
           </div>

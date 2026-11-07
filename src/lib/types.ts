@@ -116,8 +116,10 @@ export type RoomEvent =
 /**
  * start/end: a member began/stopped a live video recording (start repeats as a heartbeat).
  * watch/leave: a viewer asks to join / stops watching. offer/answer: SDP exchange.
+ * relay: a viewer that can't connect directly asks for the server relay.
+ * chunk: (server only) a relay piece was stored; data is {"seq","mime"}.
  */
-export type LiveKind = "start" | "end" | "watch" | "leave" | "offer" | "answer";
+export type LiveKind = "start" | "end" | "watch" | "leave" | "offer" | "answer" | "relay" | "chunk";
 
 export interface LiveSignal {
   type: "live";
