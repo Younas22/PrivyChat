@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MaximizeIcon, VideoIcon, VolumeIcon, VolumeOffIcon, XIcon } from "@/components/ui/icons";
+import { GripIcon, MaximizeIcon, VideoIcon, VolumeIcon, VolumeOffIcon, XIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import type { GuestStatus, LiveReaction, LiveWatch } from "./useLiveVideo";
 import { FloatingReactions, ReactionBar, useFloatingReactions } from "./FloatingReactions";
@@ -104,7 +104,8 @@ export function LiveViewer({
       role="region"
       aria-label={`${watch.fromName} is recording a video live`}
     >
-      <div className="flex items-center gap-1 px-2 py-1.5">
+      <div className={`flex items-center gap-1 py-1.5 pr-2 ${expanded ? "pl-2" : "pl-1"}`}>
+        {!expanded && <GripIcon className="size-4 shrink-0 text-white/50" />}
         <span className="flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold tracking-wider">
           <span className="size-1.5 animate-pulse rounded-full bg-white" />
           LIVE

@@ -282,6 +282,16 @@ export const MaximizeIcon = (p: IconProps) => (
     <path d="M3 21l7-7" />
   </Icon>
 );
+export const GripIcon = (p: IconProps) => (
+  <Icon {...p} fill="currentColor" stroke="none">
+    <circle cx="9" cy="6" r="1.6" />
+    <circle cx="15" cy="6" r="1.6" />
+    <circle cx="9" cy="12" r="1.6" />
+    <circle cx="15" cy="12" r="1.6" />
+    <circle cx="9" cy="18" r="1.6" />
+    <circle cx="15" cy="18" r="1.6" />
+  </Icon>
+);
 export const MinimizeIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M4 14h6v6" />

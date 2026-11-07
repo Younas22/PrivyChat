@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  GripIcon,
   MaximizeIcon,
   MinimizeIcon,
   SendIcon,
@@ -347,7 +348,8 @@ export function VideoRecorder({
     );
 
   const miniHeader = (
-        <div className="flex items-center gap-1 px-2 py-1.5" role="status" aria-live="polite">
+        <div className="flex items-center gap-1 py-1.5 pr-2 pl-1" role="status" aria-live="polite">
+          <GripIcon className="size-4 shrink-0 text-white/50" />
           <span className="flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold tabular-nums">
             <span className="size-1.5 animate-pulse rounded-full bg-white" />
             {fmt(elapsed)}
