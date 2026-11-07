@@ -1,10 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SendIcon, SwitchCameraIcon, TrashIcon, XIcon } from "@/components/ui/icons";
+import {
+  MaximizeIcon,
+  MinimizeIcon,
+  SendIcon,
+  SwitchCameraIcon,
+  TrashIcon,
+  XIcon,
+} from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { createComposite, type Composite } from "@/lib/client/videoComposite";
-import { FloatingReactions, useFloatingReactions } from "./FloatingReactions";
+import { FloatingReactions, ReactionBar, useFloatingReactions } from "./FloatingReactions";
+import { useDraggable } from "./useDraggable";
 import type { GuestFeed, LiveReaction } from "./useLiveVideo";
 
 const VIDEO_BPS = 1_500_000;
@@ -30,6 +38,8 @@ interface VideoRecorderProps {
   reaction: LiveReaction | null;
   /** A viewer who joined with their camera (shown picture-in-picture and recorded too). */
   guest: GuestFeed | null;
+  /** Sends an emoji to everyone watching. */
+  onReact: (emoji: string) => void;
   onStartLive: (stream: MediaStream) => void;
   onStopLive: () => void;
   onSend: (file: File) => void;
@@ -48,6 +58,7 @@ export function VideoRecorder({
   viewerCount,
   reaction,
   guest,
+  onReact,
   onStartLive,
   onStopLive,
   onSend,
@@ -61,6 +72,7 @@ export function VideoRecorder({
   const [shareLive, setShareLive] = useState(true);
   const [result, setResult] = useState<{ file: File; url: string } | null>(null);
   const [cameraCount, setCameraCount] = useState(0);
+  const [mini, setMini] = useState(false);
   const previewRef = useRef<HTMLVideoElement>(null);
   const guestRef = useRef<HTMLVideoElement>(null);
   const compositeRef = useRef<Composite | null>(null);
@@ -242,6 +254,7 @@ export function VideoRecorder({
     startedAtRef.current = Date.now();
     rec.start(500);
     setElapsed(0);
+    setMini(false); // every recording starts full screen
     setPhase("recording");
     timerRef.current = setInterval(() => {
       const secs = Math.floor((Date.now() - startedAtRef.current) / 1000);
@@ -263,9 +276,18 @@ export function VideoRecorder({
     onClose();
   };
 
+  // Small screen: a draggable floating window while recording, so the chat stays usable.
+  const isMini = mini && phase === "recording";
+  const { ref: dragRef, style: dragStyle, handlers: dragHandlers, dragClass } = useDraggable<HTMLDivElement>(isMini);
+  const miniRef = useRef(isMini);
+  useEffect(() => {
+    miniRef.current = isMini;
+  });
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") callbacks.current.onClose();
+      // Never discard a recording from the small window by accident.
+      if (e.key === "Escape" && !miniRef.current) callbacks.current.onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -273,13 +295,102 @@ export function VideoRecorder({
 
   const live = phase === "recording" && shareLive && liveAvailable;
 
+  const reactAsHost = (emoji: string) => {
+    floating.add(emoji); // instant feedback on my side
+    onReact(emoji);
+  };
+
+  const iconBtn = "grid size-11 place-items-center rounded-full bg-white/10 transition hover:bg-white/20";
+  const miniBtn = "grid size-8 shrink-0 place-items-center rounded-full transition hover:bg-white/15";
+
+  // The camera, guest and reactions. Rendered at the same place in the tree in both sizes so the
+  // <video> elements (and the recording drawn from them) survive switching between sizes.
+  const stage =
+    phase === "review" && result ? (
+      <video src={result.url} controls autoPlay playsInline className="size-full object-contain" />
+    ) : (
+      <>
+        <video
+          ref={previewRef}
+          muted
+          playsInline
+          autoPlay
+          className="pointer-events-none size-full object-contain"
+          style={facing === "user" ? { transform: "scaleX(-1)" } : undefined}
+        />
+        {!stream && (
+          <div className="absolute inset-0 grid place-items-center">
+            <Spinner className="size-8 text-white/70" />
+          </div>
+        )}
+        {showGuest && (
+          <div
+            className={`animate-fade-in absolute overflow-hidden bg-black shadow-2xl ${
+              isMini
+                ? "top-1.5 right-1.5 w-[36%] rounded-lg ring-1 ring-white/80"
+                : "top-3 right-3 w-[30%] max-w-52 min-w-28 rounded-xl ring-2 ring-white/80"
+            }`}
+          >
+            <video ref={guestRef} playsInline autoPlay className="pointer-events-none aspect-[3/4] w-full object-cover" />
+            {!isMini && (
+              <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 px-2 pt-3 pb-1 text-[11px] font-medium">
+                {guest?.name}
+              </span>
+            )}
+          </div>
+        )}
+        {phase === "recording" && <FloatingReactions items={floating.items} size={isMini ? "sm" : "lg"} />}
+        <span className="sr-only" aria-live="polite">
+          {lastReaction ? `${lastReaction.fromName} reacted ${lastReaction.emoji}` : ""}
+        </span>
+      </>
+    );
+
+  const miniHeader = (
+        <div className="flex items-center gap-1 px-2 py-1.5" role="status" aria-live="polite">
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold tabular-nums">
+            <span className="size-1.5 animate-pulse rounded-full bg-white" />
+            {fmt(elapsed)}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-xs font-medium">
+            {live ? (guest ? `with ${guest.name}` : viewerCount > 0 ? `${viewerCount} watching` : "LIVE") : "Recording"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setMini(false)}
+            className={miniBtn}
+            aria-label="Full screen"
+            title="Full screen"
+          >
+            <MaximizeIcon className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => stopRecorder(false)}
+            className={`${miniBtn} bg-red-600 hover:bg-red-500`}
+            aria-label="End and stop recording"
+            title="End"
+          >
+            <span className="size-3 rounded-[3px] bg-white" />
+          </button>
+        </div>
+  );
+
   return (
     <div
-      className="animate-fade-in fixed inset-0 z-50 flex flex-col bg-black pt-[env(safe-area-inset-top)] pb-[max(1rem,env(safe-area-inset-bottom))] text-white"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Record a video"
+      ref={dragRef}
+      style={dragStyle}
+      {...dragHandlers}
+      className={
+        isMini
+          ? `animate-slide-up fixed right-3 bottom-28 z-40 w-52 overflow-hidden rounded-2xl bg-black text-white shadow-2xl ring-1 ring-white/10 sm:right-6 sm:w-64 ${dragClass}`
+          : "animate-fade-in fixed inset-0 z-50 flex flex-col bg-black pt-[env(safe-area-inset-top)] pb-[max(1rem,env(safe-area-inset-bottom))] text-white"
+      }
+      role={isMini ? "region" : "dialog"}
+      aria-modal={isMini ? undefined : true}
+      aria-label={isMini ? "Recording a video" : "Record a video"}
     >
+      {isMini ? miniHeader : (
       <div className="flex items-center gap-2 px-3 py-2">
         <button
           type="button"
@@ -310,51 +421,36 @@ export function VideoRecorder({
           <button
             type="button"
             onClick={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
-            className="grid size-11 place-items-center rounded-full bg-white/10 transition hover:bg-white/20"
+            className={iconBtn}
             aria-label="Switch camera"
           >
             <SwitchCameraIcon className="size-5" />
+          </button>
+        ) : phase === "recording" ? (
+          <button
+            type="button"
+            onClick={() => setMini(true)}
+            className={iconBtn}
+            aria-label="Small screen"
+            title="Small screen (keep chatting while recording)"
+          >
+            <MinimizeIcon className="size-5" />
           </button>
         ) : (
           <span className="size-11" />
         )}
       </div>
+      )}
 
-      <div className="relative min-h-0 flex-1">
-        {phase === "review" && result ? (
-          <video src={result.url} controls autoPlay playsInline className="size-full object-contain" />
-        ) : (
-          <>
-            <video
-              ref={previewRef}
-              muted
-              playsInline
-              autoPlay
-              className="size-full object-contain"
-              style={facing === "user" ? { transform: "scaleX(-1)" } : undefined}
-            />
-            {!stream && (
-              <div className="absolute inset-0 grid place-items-center">
-                <Spinner className="size-8 text-white/70" />
-              </div>
-            )}
-            {showGuest && (
-              <div className="animate-fade-in absolute top-3 right-3 w-[30%] max-w-52 min-w-28 overflow-hidden rounded-xl bg-black shadow-2xl ring-2 ring-white/80">
-                <video ref={guestRef} playsInline autoPlay className="aspect-[3/4] w-full object-cover" />
-                <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 px-2 pt-3 pb-1 text-[11px] font-medium">
-                  {guest?.name}
-                </span>
-              </div>
-            )}
-            {phase === "recording" && <FloatingReactions items={floating.items} />}
-            <span className="sr-only" aria-live="polite">
-              {lastReaction ? `${lastReaction.fromName} reacted ${lastReaction.emoji}` : ""}
-            </span>
-          </>
-        )}
+      <div className={isMini ? "relative aspect-[3/4] bg-black sm:aspect-video" : "relative min-h-0 flex-1"}>
+        {stage}
       </div>
 
+      {isMini ? (
+        live && <ReactionBar onReact={reactAsHost} label="Send everyone watching a reaction" />
+      ) : (
       <div className="flex flex-col items-center gap-3 px-4 pt-3">
+        {live && <ReactionBar onReact={reactAsHost} large label="Send everyone watching a reaction" />}
         {phase === "preview" && liveAvailable && (
           <label className="flex cursor-pointer items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm select-none">
             <input
@@ -400,6 +496,7 @@ export function VideoRecorder({
           </button>
         )}
       </div>
+      )}
     </div>
   );
 }

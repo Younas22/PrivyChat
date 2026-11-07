@@ -282,6 +282,14 @@ export const MaximizeIcon = (p: IconProps) => (
     <path d="M3 21l7-7" />
   </Icon>
 );
+export const MinimizeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 14h6v6" />
+    <path d="M20 10h-6V4" />
+    <path d="M14 10l7-7" />
+    <path d="M3 21l7-7" />
+  </Icon>
+);
 export const PlayIcon = (p: IconProps) => (
   <Icon {...p} fill="currentColor">
     <polygon points="6 3 20 12 6 21 6 3" />

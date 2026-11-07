@@ -131,6 +131,8 @@ export function useLiveVideo(base: string, selfId: string) {
   const [watch, setWatch] = useState<LiveWatch | null>(null);
   /** Latest emoji a viewer sent the recorder (id changes on every reaction). */
   const [reaction, setReaction] = useState<LiveReaction | null>(null);
+  /** Latest emoji the recorder sent to viewers (shown on my live window while watching). */
+  const [viewerReaction, setViewerReaction] = useState<LiveReaction | null>(null);
   const reactionId = useRef(0);
   /** Recorder side: the viewer who joined with their camera. */
   const [guest, setGuest] = useState<GuestFeed | null>(null);
@@ -689,6 +691,15 @@ export function useLiveVideo(base: string, selfId: string) {
     [send],
   );
 
+  /** Recorder sends an emoji to everyone watching. */
+  const sendHostReaction = useCallback(
+    (emoji: string) => {
+      const b = broadcast.current;
+      if (b) send(b.sessionId, "react", null, emoji);
+    },
+    [send],
+  );
+
   /** Viewer closed the live window: stop receiving this session. */
   const closeWatch = useCallback(() => {
     const v = viewing.current;
@@ -714,8 +725,11 @@ export function useLiveVideo(base: string, selfId: string) {
         if (b && b.sessionId === e.sessionId) startRelay(b);
         break;
       case "react":
-        if (b && b.sessionId === e.sessionId && e.data) {
+        if (!e.data) break;
+        if (b && b.sessionId === e.sessionId) {
           setReaction({ id: ++reactionId.current, emoji: e.data, fromName: e.fromName });
+        } else if (v && v.sessionId === e.sessionId && v.from === e.from) {
+          setViewerReaction({ id: ++reactionId.current, emoji: e.data, fromName: e.fromName });
         }
         break;
       case "leave":
@@ -894,6 +908,8 @@ export function useLiveVideo(base: string, selfId: string) {
     closeWatch,
     reaction,
     sendReaction,
+    viewerReaction,
+    sendHostReaction,
     guest,
     guestSelf,
     guestStatus,

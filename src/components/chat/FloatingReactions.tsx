@@ -1,6 +1,48 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { LIVE_REACTIONS } from "@/lib/types";
+
+const REACT_GAP_MS = 250; // keeps rapid taps under the server's rate limit
+
+/** Row of emoji buttons for live video (both the recorder and viewers). */
+export function ReactionBar({
+  onReact,
+  large,
+  label,
+}: {
+  onReact: (emoji: string) => void;
+  large?: boolean;
+  label: string;
+}) {
+  const lastAt = useRef(-Infinity);
+  return (
+    <div
+      data-no-drag
+      className={`scrollbar-dark flex max-w-full gap-0.5 overflow-x-auto px-1.5 py-1.5 ${large ? "justify-center" : ""}`}
+      role="group"
+      aria-label={label}
+    >
+      {LIVE_REACTIONS.map((emoji) => (
+        <button
+          key={emoji}
+          type="button"
+          onClick={(e) => {
+            if (e.timeStamp - lastAt.current < REACT_GAP_MS) return;
+            lastAt.current = e.timeStamp;
+            onReact(emoji);
+          }}
+          className={`grid shrink-0 place-items-center rounded-full transition hover:bg-white/15 active:scale-90 ${
+            large ? "size-11 text-2xl" : "size-8 text-lg"
+          }`}
+          aria-label={`React ${emoji}`}
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 type Floating = { id: number; emoji: string; name?: string; left: number; sway: number };
 

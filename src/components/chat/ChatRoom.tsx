@@ -1037,6 +1037,7 @@ function ChatRoomInner({
             viewerCount={live.viewerCount}
             reaction={live.reaction}
             guest={live.guest}
+            onReact={live.sendHostReaction}
             onStartLive={live.startBroadcast}
             onStopLive={live.stopBroadcast}
             onSend={(file) => onSendFile(file, "")}
@@ -1049,6 +1050,7 @@ function ChatRoomInner({
             watch={live.watch}
             onClose={closeWatch}
             onReact={live.sendReaction}
+            reaction={live.viewerReaction}
             selfStream={live.guestSelf}
             cameraStatus={live.guestStatus}
             onJoinCamera={() =>
