@@ -149,6 +149,8 @@ export function Composer({
     onError,
   });
   const showMic = voice.supported && !disabled && !file && text.trim().length === 0;
+  // On phones, hide the attach/video buttons while typing so the text box gets the full width.
+  const hideExtrasOnMobile = text.length > 0 || file !== null ? "max-sm:hidden" : "";
   const fmt = (secs: number) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
 
   if (voice.state === "recording") {
@@ -189,7 +191,7 @@ export function Composer({
   }
 
   return (
-    <div className="border-t border-tr-line bg-tr-bg px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+    <div className="border-t border-tr-line bg-tr-bg px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:pt-3 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       {replyTo && (
         <div className="mb-2 flex items-center gap-2 rounded-xl border border-tr-line bg-tr-card py-1.5 pr-1 pl-3">
           <ReplyIcon className="size-4 shrink-0 text-violet-300" />
@@ -239,7 +241,7 @@ export function Composer({
         </div>
       )}
 
-      <div className="flex items-end gap-1 rounded-2xl border border-tr-line bg-tr-card p-1.5 transition focus-within:border-tr-primary/60 focus-within:ring-2 focus-within:ring-tr-primary/20">
+      <div className="flex items-end gap-0.5 rounded-2xl border border-tr-line bg-tr-card p-1 sm:gap-1 sm:p-1.5 transition focus-within:border-tr-primary/60 focus-within:ring-2 focus-within:ring-tr-primary/20">
         <div ref={emojiRef} className="relative">
           <button
             type="button"
@@ -272,7 +274,7 @@ export function Composer({
           type="button"
           disabled={disabled}
           onClick={() => fileInputRef.current?.click()}
-          className="grid size-10 shrink-0 place-items-center rounded-xl text-tr-muted transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+          className={`${hideExtrasOnMobile} grid size-10 shrink-0 place-items-center rounded-xl text-tr-muted transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50`}
           aria-label="Attach a file"
         >
           <PaperclipIcon className="size-5" />
@@ -282,7 +284,7 @@ export function Composer({
             type="button"
             disabled={disabled}
             onClick={onRecordVideo}
-            className="grid size-10 shrink-0 place-items-center rounded-xl text-tr-muted transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+            className={`${hideExtrasOnMobile} grid size-10 shrink-0 place-items-center rounded-xl text-tr-muted transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50`}
             aria-label="Record a video"
             title="Record a video"
           >
@@ -316,7 +318,7 @@ export function Composer({
           rows={1}
           maxLength={4000}
           placeholder={disabled ? "You can't send messages in this room" : file ? "Add a caption…" : "Type a message..."}
-          className="scrollbar-dark max-h-40 min-h-10 min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-base leading-6 text-white placeholder:text-tr-muted focus:ring-0 focus:outline-none disabled:opacity-60 sm:text-[15px]"
+          className="scrollbar-dark max-h-40 min-h-10 min-w-0 flex-1 resize-none border-0 bg-transparent px-1.5 py-2 sm:px-2 text-base leading-6 text-white placeholder:text-tr-muted focus:ring-0 focus:outline-none disabled:opacity-60 sm:text-[15px]"
           aria-label="Message"
         />
 
