@@ -8,7 +8,7 @@ import { listRoomMessages, resolveRoomAccess } from "@/lib/server/rooms";
 import { toRoomInfo } from "@/lib/server/serialize";
 import { pusherConfig } from "@/lib/server/realtime";
 import { maxSizeFor } from "@/lib/server/uploads";
-import { getStorage } from "@/lib/storage";
+import { directUploadMode } from "@/lib/storage";
 
 export const metadata: Metadata = {
   title: `Chat room · ${APP_NAME}`,
@@ -62,7 +62,7 @@ export default async function ChatPage({ params }: PageProps<"/chat/[roomCode]">
             document: maxSizeFor("document"),
           }}
           realtime={pusher ? { provider: "pusher", key: pusher.key, cluster: pusher.cluster } : { provider: "sse" }}
-          directUploads={getStorage().clientUploads ? (getStorage().clientAccess ?? "private") : null}
+          directUploads={directUploadMode()}
         />
       );
     }

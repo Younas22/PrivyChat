@@ -46,10 +46,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ key: str
     const mime = message.fileMimeType ?? "application/octet-stream";
     const download = new URL(req.url).searchParams.has("download") || !INLINE_TYPES.test(mime);
 
-    // Public object storage: hand the (unguessable) file URL to the authorized member only.
-    const target = storage.redirectUrl ? await storage.redirectUrl(key) : null;
+    // Object storage: hand a public (unguessable) or short-lived signed URL to the authorized member only.
+    const target = storage.redirectUrl
+      ? await storage.redirectUrl(key, { download, fileName: message.fileName ?? "file", mimeType: mime })
+      : null;
     if (target) {
-      const res = NextResponse.redirect(download ? `${target}?download=1` : target, 302);
+      const res = NextResponse.redirect(target, 302);
       // Let the browser reuse the redirect briefly so images don't hit the server on every render.
       res.headers.set("Cache-Control", "private, max-age=600");
       res.headers.set("Referrer-Policy", "no-referrer");

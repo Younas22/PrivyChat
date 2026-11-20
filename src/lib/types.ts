@@ -174,3 +174,6 @@ export interface RoomSummary {
   messageCount: number;
   lastMessage: string | null;
 }
+
+/** How the browser uploads files: straight to object storage, or null for POSTing to our server. */
+export type DirectUploadMode = { provider: "vercel-blob"; access: "public" | "private" } | { provider: "r2" } | null;

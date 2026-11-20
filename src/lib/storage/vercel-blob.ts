@@ -1,6 +1,6 @@
 import "server-only";
 import { BlobNotFoundError, del, get, head, list, put } from "@vercel/blob";
-import type { StorageDriver } from "./types";
+import type { RedirectOptions, StorageDriver } from "./types";
 
 type Access = "public" | "private";
 
@@ -13,6 +13,7 @@ type Access = "public" | "private";
  */
 export class VercelBlobDriver implements StorageDriver {
   readonly clientUploads = true;
+  readonly clientProvider = "vercel-blob" as const;
   readonly clientAccess: Access;
 
   constructor(access: Access) {
@@ -64,12 +65,13 @@ export class VercelBlobDriver implements StorageDriver {
   // Public URLs are "<store base>/<pathname>". Learn the base once, then build URLs without an API call.
   private baseUrl: string | null = null;
 
-  redirectUrl?: (key: string) => Promise<string | null> = async (key) => {
-    if (this.baseUrl) return `${this.baseUrl}/${key}`;
+  redirectUrl?: (key: string, opts?: RedirectOptions) => Promise<string | null> = async (key, opts) => {
+    const suffix = opts?.download ? "?download=1" : "";
+    if (this.baseUrl) return `${this.baseUrl}/${key}${suffix}`;
     const meta = await this.meta(key);
     if (!meta) return null;
     if (meta.url.endsWith(`/${key}`)) this.baseUrl = meta.url.slice(0, -key.length - 1);
-    return meta.url;
+    return `${meta.url}${suffix}`;
   };
 
   async delete(key: string) {

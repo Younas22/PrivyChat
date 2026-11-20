@@ -8,6 +8,7 @@ import type {
   MessagesPage,
   ReactionGroup,
   RealtimeConfig,
+  DirectUploadMode,
   RoomEvent,
   RoomInfo,
   RoomMemberInfo,
@@ -63,7 +64,7 @@ interface ChatRoomProps {
   limits: UploadLimits;
   realtime: RealtimeConfig;
   /** Access level for direct-to-storage uploads, or null to POST files to our own route. */
-  directUploads: "public" | "private" | null;
+  directUploads: DirectUploadMode;
 }
 
 const HEADER_BTN_BASE =
@@ -552,7 +553,7 @@ function ChatRoomInner({
           ({ message } = await directUpload({
             base,
             roomId: roomRef.current.id,
-            access: directUploads,
+            mode: directUploads,
             file: item.file,
             caption: item.caption,
             replyToMessageId: item.replyTo?.id ?? null,
